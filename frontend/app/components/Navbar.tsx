@@ -41,8 +41,9 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.refresh()
+    router.push("/auth/login")
   }
+  
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md">

@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowRight, Search } from "lucide-react"
@@ -8,11 +10,11 @@ import FeaturedAuctions from "./components/featured-auctions"
 import CategoryList from "./components/category-list"
 import HowItWorks from "./components/how-it-works"
 import Testimonials from "./components/testimonials"
-
+import { useAuth } from "@/app/context/AuthProvider"
 export default function Home() {
-  return (
+  const {user}=useAuth()
+  return(
     <div className="flex min-h-screen flex-col">
-      {/* Hero Section */}
       <section className="relative bg-gradient-to-b from-rose-50 to-white py-20 dark:from-gray-900 dark:to-gray-950">
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12">
@@ -32,9 +34,11 @@ export default function Home() {
                     Browse Auctions <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Link href="/auth/register" passHref>
-                  <Button variant="outline">Create Account</Button>
-                </Link>
+                {!user && (
+                  <Link href="/auth/register" passHref>
+                    <Button variant="outline">Create Account</Button>
+                  </Link>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-center">
@@ -97,11 +101,13 @@ export default function Home() {
               </p>
             </div>
             <div className="flex flex-col gap-2 min-[400px]:flex-row">
-              <Link href="/auth/register" passHref>
-                <Button className="bg-white text-rose-600 hover:bg-gray-100 dark:bg-white dark:text-rose-600 dark:hover:bg-gray-100">
-                  Create Account
-                </Button>
-              </Link>
+              {!user && (
+                <Link href="/auth/register" passHref>
+                  <Button className="bg-white text-rose-600 hover:bg-gray-100 dark:bg-white dark:text-rose-600 dark:hover:bg-gray-100">
+                    Create Account
+                  </Button>
+                </Link>
+              )}
               <Link href="/auctions" passHref>
                 <Button
                   variant="outline"

@@ -4,11 +4,10 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useAuth } from "../../context/AuthProvider"
+import FullScreenLoader from "@/app/components/FullScreenLoader"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
@@ -16,11 +15,9 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClientComponentClient()
-
-  // Get user session and loading state from context
-  const { session, loading } = useAuth()
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,34 +28,29 @@ export default function RegisterPage() {
       return
     }
 
-    // Step 1: Register the user with email and password
-    const { user, error: signUpError } = await supabase.auth.signUp({
+    setLoading(true)
+
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          username,        // Add username to user metadata
-        },
+        data: { username },
+        emailRedirectTo: `${location.origin}/auth/callback`,
       },
     })
 
     if (signUpError) {
       setError(signUpError.message)
+      setLoading(false)
       return
     }
 
-    // Step 2: Optionally, insert the user into a custom "users" table if necessary
-    // This can be skipped if you only need `display_name` and `username` stored in metadata.
-
-    // Wait for the session to be available and then redirect to dashboard
-    if (session) {
-      router.push("/dashboard")
-    }
+    // Redirect to the email verification waiting screen
+    router.push("/auth/verify-email")
   }
 
-  // Optionally handle a case where we're still loading session state
   if (loading) {
-    return <div>Loading...</div>
+    return <FullScreenLoader message="Creating your account..." />
   }
 
   return (
@@ -125,9 +117,6 @@ export default function RegisterPage() {
                 ) : (
                   <Eye className="h-4 w-4 text-muted-foreground" />
                 )}
-                <span className="sr-only">
-                  {showPassword ? "Hide password" : "Show password"}
-                </span>
               </Button>
             </div>
           </div>
