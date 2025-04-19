@@ -1,6 +1,7 @@
 import type React from "react"
 import { Inter } from "next/font/google"
 import Link from "next/link"
+import { AuthProvider } from "./context/AuthProvider"
 import { Bell, Heart, Menu, Search, User } from "lucide-react"
 
 import { ThemeProvider } from "@/components/theme-provider"
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ModeToggle } from "./components/mode-toggle"
-
+import Navbar from "./components/Navbar"
 import "./globals.css"
 import { Suspense } from "react"
 
@@ -27,112 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+      <AuthProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <div className="relative flex min-h-screen flex-col">
-            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <div className="container flex h-16 items-center">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="md:hidden">
-                      <Menu className="h-5 w-5" />
-                      <span className="sr-only">Toggle menu</span>
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="pr-0">
-                    <div className="px-7">
-                      <Link href="/" className="flex items-center">
-                        <span className="text-xl font-bold">AuctionHub</span>
-                      </Link>
-                    </div>
-                    <div className="flex flex-col space-y-3 px-7 pt-6">
-                      <Link href="/auctions" className="flex items-center text-lg font-medium">
-                        Browse Auctions
-                      </Link>
-                      <Link href="/categories" className="flex items-center text-lg font-medium">
-                        Categories
-                      </Link>
-                      <Link href="/sell" className="flex items-center text-lg font-medium">
-                        Sell an Item
-                      </Link>
-                      <Link href="/how-it-works" className="flex items-center text-lg font-medium">
-                        How It Works
-                      </Link>
-                      <Link href="/about" className="flex items-center text-lg font-medium">
-                        About Us
-                      </Link>
-                      <Link href="/contact" className="flex items-center text-lg font-medium">
-                        Contact
-                      </Link>
-                    </div>
-                    <div className="mt-6 px-7">
-                      <div className="flex flex-col space-y-2">
-                        <Link href="/auth/login" passHref>
-                          <Button variant="outline" className="w-full justify-start">
-                            <User className="mr-2 h-4 w-4" />
-                            Login
-                          </Button>
-                        </Link>
-                        <Link href="/auth/register" passHref>
-                          <Button className="w-full justify-start bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
-                            Register
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-                <Link href="/" className="ml-4 flex items-center md:ml-0">
-                  <span className="text-xl font-bold">AuctionHub</span>
-                </Link>
-                <div className="flex w-full items-center md:w-auto">
-                  <nav className="ml-auto hidden gap-5 md:flex">
-                    <Link href="/auctions" className="text-sm font-medium">
-                      Browse Auctions
-                    </Link>
-                    <Link href="/categories" className="text-sm font-medium">
-                      Categories
-                    </Link>
-                    <Link href="/sell" className="text-sm font-medium">
-                      Sell an Item
-                    </Link>
-                    <Link href="/how-it-works" className="text-sm font-medium">
-                      How It Works
-                    </Link>
-                  </nav>
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                  <form className="hidden items-center lg:flex">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="search"
-                        placeholder="Search..."
-                        className="w-60 rounded-lg bg-background pl-8 md:w-80"
-                      />
-                    </div>
-                  </form>
-                  <Button variant="ghost" size="icon" className="text-muted-foreground">
-                    <Bell className="h-5 w-5" />
-                    <span className="sr-only">Notifications</span>
-                  </Button>
-                  <Button variant="ghost" size="icon" className="text-muted-foreground">
-                    <Heart className="h-5 w-5" />
-                    <span className="sr-only">Favorites</span>
-                  </Button>
-                  <ModeToggle />
-                  <Link href="/auth/login" className="hidden md:block">
-                    <Button variant="ghost" size="sm">
-                      Login
-                    </Button>
-                  </Link>
-                  <Link href="/auth/register" className="hidden md:block">
-                    <Button size="sm" className="bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
-                      Register
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </header>
+          <Navbar />
             <Suspense>
               <main className="flex-1">{children}</main>
             </Suspense>
@@ -302,6 +201,7 @@ export default function RootLayout({
             </footer>
           </div>
         </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   )

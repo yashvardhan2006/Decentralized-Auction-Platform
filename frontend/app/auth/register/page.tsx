@@ -1,152 +1,155 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Separator } from "@/components/ui/separator"
+import { useAuth } from "../../context/AuthProvider"
 
 export default function RegisterPage() {
+  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState("")
+  const router = useRouter()
+  const supabase = createClientComponentClient()
+
+  // Get user session and loading state from context
+  const { session, loading } = useAuth()
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+
+    if (!email || !username || !password) {
+      setError("Please fill in all fields.")
+      return
+    }
+
+    // Step 1: Register the user with email and password
+    const { user, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          username,        // Add username to user metadata
+        },
+      },
+    })
+
+    if (signUpError) {
+      setError(signUpError.message)
+      return
+    }
+
+    // Step 2: Optionally, insert the user into a custom "users" table if necessary
+    // This can be skipped if you only need `display_name` and `username` stored in metadata.
+
+    // Wait for the session to be available and then redirect to dashboard
+    if (session) {
+      router.push("/dashboard")
+    }
+  }
+
+  // Optionally handle a case where we're still loading session state
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   return (
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
         <div className="flex flex-col space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
-          <p className="text-sm text-muted-foreground">Enter your information to create an account</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Register</h1>
+          <p className="text-sm text-muted-foreground">
+            Create your account using email, username, and password
+          </p>
         </div>
-        <div className="grid gap-6">
-          <form>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="name"
-                    placeholder="John Doe"
-                    type="text"
-                    autoCapitalize="words"
-                    autoComplete="name"
-                    autoCorrect="off"
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    placeholder="name@example.com"
-                    type="email"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    autoCorrect="off"
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="password" type={showPassword ? "text" : "password"} className="pl-9 pr-9" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="terms" />
-                <Label
-                  htmlFor="terms"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  I agree to the{" "}
-                  <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
-                    terms of service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/privacy" className="underline underline-offset-4 hover:text-primary">
-                    privacy policy
-                  </Link>
-                </Label>
-              </div>
-              <Button className="bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
-                Create Account
+
+        <form onSubmit={handleRegister} className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="username">Username</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="username"
+                type="text"
+                placeholder="your_username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="sr-only">
+                  {showPassword ? "Hide password" : "Show password"}
+                </span>
               </Button>
             </div>
-          </form>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline">
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  fill="#EA4335"
-                />
-                <path d="M1 1h22v22H1z" fill="none" />
-              </svg>
-              Google
-            </Button>
-            <Button variant="outline">
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                <path
-                  d="M9.1 2.9c-1.1.4-2.2 1.1-3.1 2.2-.8 1-1.4 2.1-1.7 3.3 1.2-1.3 2.7-2 4.2-2.2-.5.6-.8 1.5-.8 2.3 0 1 .3 1.9 1 2.6.6.7 1.5 1.1 2.5 1.1 1 0 1.9-.4 2.5-1.1.7-.7 1-1.6 1-2.6 0-1.2-.5-2.3-1.3-3.2-.8-.8-1.9-1.3-3.1-1.3-.4 0-.8 0-1.2.1z"
-                  fill="#1877F2"
-                />
-                <path
-                  d="M22 12c0-5.5-4.5-10-10-10S2 6.5 2 12c0 5 3.7 9.1 8.4 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7C18.3 21.1 22 17 22 12z"
-                  fill="#1877F2"
-                />
-                <path d="M1 1h22v22H1z" fill="none" />
-              </svg>
-              Facebook
-            </Button>
-          </div>
-        </div>
+
+          {error && <p className="text-sm text-red-500">{error}</p>}
+
+          <Button
+            type="submit"
+            className="bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700"
+          >
+            Create Account
+          </Button>
+        </form>
+
         <p className="px-8 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="/auth/login" className="underline underline-offset-4 hover:text-primary">
+          <a
+            href="/auth/login"
+            className="underline underline-offset-4 hover:text-primary"
+          >
             Sign in
-          </Link>
+          </a>
         </p>
       </div>
     </div>
