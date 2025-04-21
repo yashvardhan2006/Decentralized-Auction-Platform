@@ -285,20 +285,20 @@ export default function AuctionDetailPage({ params }: { params: { id: string } }
                       Your Maximum Bid
                     </label>
                     <div className="relative">
-                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">Ξ</span>
                       <Input
                         id="bid-amount"
                         type="number"
                         min={auction.nextMinimumBid}
-                        step="5"
+                        step="0.01"
                         defaultValue={auction.nextMinimumBid}
                         className="pl-7"
                       />
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Enter ${auction.nextMinimumBid} or more</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Enter Ξ{auction.nextMinimumBid} or more</p>
                   </div>
                   <Button className="w-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
-                    Place Bid
+                    Place Bid with Wallet
                   </Button>
                   <div className="flex gap-2">
                     <Button variant="outline" className="flex-1">
@@ -317,15 +317,29 @@ export default function AuctionDetailPage({ params }: { params: { id: string } }
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start">
                       <Shield className="mr-2 h-4 w-4 mt-0.5 text-gray-500" />
-                      <span>Buyer Protection: Get a full refund if item is not as described</span>
+                      <span>Smart Contract Protection: Funds held in escrow until item is received</span>
                     </li>
                     <li className="flex items-start">
                       <User className="mr-2 h-4 w-4 mt-0.5 text-gray-500" />
                       <span>Verified Seller with {auction.seller.reviews} positive reviews</span>
                     </li>
                     <li className="flex items-start">
-                      <Truck className="mr-2 h-4 w-4 mt-0.5 text-gray-500" />
-                      <span>Secure shipping with tracking and insurance</span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mr-2 h-4 w-4 mt-0.5 text-gray-500"
+                      >
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                      </svg>
+                      <span>Decentralized transaction with immutable blockchain record</span>
                     </li>
                   </ul>
                 </div>
