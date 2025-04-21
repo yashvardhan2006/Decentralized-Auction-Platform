@@ -4,6 +4,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import FullScreenLoader from "@/app/components/FullScreenLoader"
 
 export default function AuthCallback() {
   const router = useRouter()
@@ -28,12 +29,14 @@ export default function AuthCallback() {
     checkSession()
   }, [router, supabase])
 
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center">
-        <h2 className="text-xl font-semibold">Verifying your email...</h2>
-        <p className="text-muted-foreground">Just a moment while we log you in.</p>
-      </div>
-    </div>
-  )
+  return <FullScreenLoader message="Verifying your email... Just a moment while we log you in." />
+
+  // return (
+  //   <div className="flex min-h-screen items-center justify-center">
+  //     <div className="text-center">
+  //       <h2 className="text-xl font-semibold">Verifying your email...</h2>
+  //       <p className="text-muted-foreground">Just a moment while we log you in.</p>
+  //     </div>
+  //   </div>
+  // )
 }

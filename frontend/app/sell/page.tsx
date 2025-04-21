@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Link from "next/link"
 import { Camera, Info, Loader2 } from "lucide-react"
 
@@ -19,20 +18,37 @@ import { Checkbox } from "@/components/ui/checkbox"
 export default function SellPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [images, setImages] = useState<string[]>([])
+  const [selectedCondition, setSelectedCondition] = useState<string>("")
+  const [customDuration, setCustomDuration] = useState<string>("7")
+  const [formError, setFormError] = useState(false)
+
+  const itemConditionRef = useRef<HTMLDivElement>(null)
+  const itemPhotosRef = useRef<HTMLDivElement>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(false)
+
+    if (!selectedCondition) {
+      itemConditionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+      setFormError(true)
+      return
+    }
+
+    if (images.length === 0) {
+      itemPhotosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+      setFormError(true)
+      return
+    }
+
     setIsSubmitting(true)
 
-    // Simulate form submission
     setTimeout(() => {
       setIsSubmitting(false)
-      // Redirect would happen here
     }, 2000)
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // This is a mock implementation - in a real app, you'd handle file uploads
     if (e.target.files && e.target.files.length > 0) {
       const newImages = Array.from(e.target.files).map(() => `/placeholder.svg?height=100&width=100&text=Image`)
       setImages([...images, ...newImages].slice(0, 5))
@@ -49,20 +65,23 @@ export default function SellPage() {
       </div>
 
       <div className="grid gap-8 md:grid-cols-3">
+        {/* Form Section */}
         <div className="md:col-span-2">
           <form onSubmit={handleSubmit}>
+            {/* Item Details Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Item Details</CardTitle>
                 <CardDescription>Provide detailed information about the item you are selling.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Title */}
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
                   <Input id="title" placeholder="Enter a descriptive title" required />
-                  <p className="text-xs text-muted-foreground">Be specific and include brand, model, size, etc.</p>
                 </div>
 
+                {/* Category */}
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
                   <Select required>
@@ -81,6 +100,7 @@ export default function SellPage() {
                   </Select>
                 </div>
 
+                {/* Description */}
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea
@@ -89,50 +109,28 @@ export default function SellPage() {
                     className="min-h-[150px]"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Include condition, features, history, and any defects or issues.
-                  </p>
                 </div>
 
-                <div className="space-y-2">
+                {/* Item Condition */}
+                <div className="space-y-2" ref={itemConditionRef}>
                   <Label>Item Condition</Label>
-                  <RadioGroup defaultValue="used-excellent">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="new" id="new" />
-                      <Label htmlFor="new" className="font-normal">
-                        New
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="used-like-new" id="used-like-new" />
-                      <Label htmlFor="used-like-new" className="font-normal">
-                        Used - Like New
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="used-excellent" id="used-excellent" />
-                      <Label htmlFor="used-excellent" className="font-normal">
-                        Used - Excellent
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="used-good" id="used-good" />
-                      <Label htmlFor="used-good" className="font-normal">
-                        Used - Good
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="used-fair" id="used-fair" />
-                      <Label htmlFor="used-fair" className="font-normal">
-                        Used - Fair
-                      </Label>
-                    </div>
+                  <RadioGroup value={selectedCondition} onValueChange={setSelectedCondition}>
+                    {["new", "used-like-new", "used-excellent", "used-good", "used-fair"].map((cond) => (
+                      <div key={cond} className="flex items-center space-x-2">
+                        <RadioGroupItem value={cond} id={cond} />
+                        <Label htmlFor={cond} className="font-normal capitalize">{cond.replace("-", " ")}</Label>
+                      </div>
+                    ))}
                   </RadioGroup>
+                  {formError && !selectedCondition && (
+                    <p className="text-sm text-rose-600">Please select the item condition.</p>
+                  )}
                 </div>
 
                 <Separator />
 
-                <div className="space-y-4">
+                {/* Item Photos */}
+                <div className="space-y-4" ref={itemPhotosRef}>
                   <div>
                     <h3 className="mb-2 text-lg font-medium">Item Photos</h3>
                     <p className="text-sm text-muted-foreground">
@@ -144,7 +142,7 @@ export default function SellPage() {
                     {images.map((image, index) => (
                       <div key={index} className="relative aspect-square rounded-md border bg-muted">
                         <img
-                          src={image || "/placeholder.svg"}
+                          src={image}
                           alt={`Item image ${index + 1}`}
                           className="h-full w-full rounded-md object-cover"
                         />
@@ -166,7 +164,7 @@ export default function SellPage() {
                           className="flex cursor-pointer flex-col items-center justify-center p-4 text-center"
                         >
                           <Camera className="mb-2 h-8 w-8 text-muted-foreground" />
-                          <span className="text-xs font-medium">Upload Image</span>
+                          <span className="text-xs font-medium">Upload</span>
                           <Input
                             id="image-upload"
                             type="file"
@@ -179,16 +177,15 @@ export default function SellPage() {
                       </div>
                     )}
                   </div>
+
+                  {formError && images.length === 0 && (
+                    <p className="text-sm text-rose-600">Please upload at least one photo.</p>
+                  )}
                 </div>
               </CardContent>
-              <CardFooter className="border-t bg-muted/50 px-6 py-4">
-                <p className="flex items-center text-sm text-muted-foreground">
-                  <Info className="mr-2 h-4 w-4" />
-                  High-quality photos increase your chances of selling.
-                </p>
-              </CardFooter>
             </Card>
 
+            {/* Pricing & Auction Details */}
             <Card className="mt-8">
               <CardHeader>
                 <CardTitle>Pricing & Auction Details</CardTitle>
@@ -198,107 +195,36 @@ export default function SellPage() {
                 <div className="space-y-2">
                   <Label htmlFor="starting-price">Starting Price ($)</Label>
                   <Input id="starting-price" type="number" min="0.01" step="0.01" placeholder="0.00" required />
-                  <p className="text-xs text-muted-foreground">Set a competitive starting price to attract bidders.</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="reserve-price">Reserve Price ($) (Optional)</Label>
                   <Input id="reserve-price" type="number" min="0.01" step="0.01" placeholder="0.00" />
-                  <p className="text-xs text-muted-foreground">
-                    The minimum price you are willing to accept. Item wont sell if bidding does not reach this price.
-                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="buy-now">Buy Now Price ($) (Optional)</Label>
                   <Input id="buy-now" type="number" min="0.01" step="0.01" placeholder="0.00" />
-                  <p className="text-xs text-muted-foreground">Allow buyers to purchase immediately at this price.</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Auction Duration</Label>
-                  <Select required defaultValue="7">
-                    <SelectTrigger id="duration">
-                      <SelectValue placeholder="Select duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 Day</SelectItem>
-                      <SelectItem value="3">3 Days</SelectItem>
-                      <SelectItem value="5">5 Days</SelectItem>
-                      <SelectItem value="7">7 Days</SelectItem>
-                      <SelectItem value="10">10 Days</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="duration">Auction Duration (days)</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Enter number of days"
+                    value={customDuration}
+                    onChange={(e) => setCustomDuration(e.target.value)}
+                    required
+                  />
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="auto-renew" />
-                    <Label htmlFor="auto-renew" className="font-normal">
-                      Automatically relist if item does not sell
-                    </Label>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="mt-8">
-              <CardHeader>
-                <CardTitle>Shipping & Location</CardTitle>
-                <CardDescription>Specify shipping options and your location.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="location">Item Location</Label>
-                  <Input id="location" placeholder="City, State/Province, Country" required />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Shipping Options</Label>
-                  <RadioGroup defaultValue="domestic-international">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="domestic-only" id="domestic-only" />
-                      <Label htmlFor="domestic-only" className="font-normal">
-                        Domestic Only
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="domestic-international" id="domestic-international" />
-                      <Label htmlFor="domestic-international" className="font-normal">
-                        Domestic & International
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="local-pickup" id="local-pickup" />
-                      <Label htmlFor="local-pickup" className="font-normal">
-                        Local Pickup Only
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="shipping-cost">Shipping Cost ($)</Label>
-                  <Input id="shipping-cost" type="number" min="0" step="0.01" placeholder="0.00" required />
-                  <p className="text-xs text-muted-foreground">Enter 0 for free shipping.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="handling-time">Handling Time</Label>
-                  <Select required defaultValue="1-2">
-                    <SelectTrigger id="handling-time">
-                      <SelectValue placeholder="Select handling time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="same-day">Same Day</SelectItem>
-                      <SelectItem value="1-2">1-2 Business Days</SelectItem>
-                      <SelectItem value="3-5">3-5 Business Days</SelectItem>
-                      <SelectItem value="5-7">5-7 Business Days</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Time needed to prepare the item for shipping after payment.
-                  </p>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="auto-renew" />
+                  <Label htmlFor="auto-renew" className="font-normal">
+                    Automatically relist if item does not sell
+                  </Label>
                 </div>
               </CardContent>
             </Card>
@@ -325,7 +251,7 @@ export default function SellPage() {
           </form>
         </div>
 
-        <div>
+<div>
           <div className="sticky top-20">
             <Card>
               <CardHeader>
