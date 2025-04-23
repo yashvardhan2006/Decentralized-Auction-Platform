@@ -35,7 +35,7 @@ export default function SellPage() {
       itemPhotosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
       setFormError(true)
       return
-    }
+    }    
 
     setIsSubmitting(true)
 
@@ -130,8 +130,9 @@ export default function SellPage() {
                   <div>
                     <h3 className="mb-2 text-lg font-medium">Item Photos</h3>
                     <p className="text-sm text-muted-foreground">
-                      Add up to 5 photos. The first image will be your main listing photo.
+                       Upload at least 1 photo. You can add up to 5. The first image will be your main listing photo.
                     </p>
+
                   </div>
 
                   <div className="grid grid-cols-5 gap-4">
