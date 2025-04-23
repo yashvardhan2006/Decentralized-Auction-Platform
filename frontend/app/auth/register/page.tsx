@@ -30,7 +30,8 @@ export default function RegisterPage() {
 
     setLoading(true)
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    // 1) Sign up the user in Supabase Auth
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -45,7 +46,28 @@ export default function RegisterPage() {
       return
     }
 
-    // Redirect to the email verification waiting screen
+    // 2) Generate a placeholder "ethereal address key"
+    //    Here we use the browser's randomUUID; you could also use any other RNG
+    const etherealAddressKey = (crypto as any).randomUUID?.() || 
+      Math.random().toString(36).slice(2)
+
+    // 3) Insert into your custom 'users' table
+    const { error: insertError } = await supabase
+      .from("users")
+      .insert([{
+        email,
+        username,
+        eth_address: etherealAddressKey,
+        // created_at will default to now() if your schema is set up that way
+      }])
+
+    if (insertError) {
+      setError(`Could not insert user data: ${insertError.message}`)
+      setLoading(false)
+      return
+    }
+
+    // 4) All done — send them to the “verify your email” waiting screen
     router.push("/auth/verify-email")
   }
 
@@ -64,6 +86,7 @@ export default function RegisterPage() {
         </div>
 
         <form onSubmit={handleRegister} className="grid gap-4">
+          {/* — your existing form fields — */}
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">

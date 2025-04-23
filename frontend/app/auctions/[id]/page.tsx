@@ -1,7 +1,7 @@
+"use client"
 import Link from "next/link"
 import Image from "next/image"
 import { Clock, DollarSign, Eye, Flag, Heart, History, Info, Share2, Shield, Tag, Truck, User } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,9 +10,7 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
-export default function AuctionDetailPage({ params }: { params: { id: string } }) {
-  // Mock auction data
+export default function AuctionDetailPage({params}:{params:{id:string}}) {
   const auction = {
     id: params.id,
     title: "Vintage 1960s Film Camera with Original Leather Case",

@@ -1,10 +1,8 @@
 "use client"
-
 import type React from "react"
 import { useRef, useState } from "react"
 import Link from "next/link"
 import { Camera, Info, Loader2 } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,19 +14,17 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export default function SellPage() {
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [images, setImages] = useState<string[]>([])
   const [selectedCondition, setSelectedCondition] = useState<string>("")
   const [customDuration, setCustomDuration] = useState<string>("7")
   const [formError, setFormError] = useState(false)
-
   const itemConditionRef = useRef<HTMLDivElement>(null)
   const itemPhotosRef = useRef<HTMLDivElement>(null)
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setFormError(false)
-
     if (!selectedCondition) {
       itemConditionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
       setFormError(true)
