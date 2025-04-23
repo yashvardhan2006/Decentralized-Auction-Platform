@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -7,7 +7,6 @@ contract AuctionSystem is ReentrancyGuard {
     struct Auction {
         string itemName;
         uint256 startPrice;
-        uint256 endTime;
         address payable owner;
         address highestBidder;
         uint256 highestBid;
@@ -18,7 +17,7 @@ contract AuctionSystem is ReentrancyGuard {
     mapping(uint256 => Auction) public auctions;
     mapping(uint256 => mapping(address => uint256)) public bids;
 
-    event AuctionCreated(uint256 indexed id, string itemName, uint256 startPrice, uint256 endTime);
+    event AuctionCreated(uint256 indexed id, string itemName, uint256 startPrice);
     event BidPlaced(uint256 indexed id, address bidder, uint256 amount);
     event AuctionEnded(uint256 indexed id, address winner, uint256 amount);
 
@@ -28,26 +27,22 @@ contract AuctionSystem is ReentrancyGuard {
     }
 
     modifier auctionActive(uint256 _id) {
-        require(block.timestamp < auctions[_id].endTime, "Auction ended");
         require(!auctions[_id].ended, "Auction already finalized");
         _;
     }
 
-    function createAuction(string calldata _itemName, uint256 _startPrice, uint256 _duration) external {
-        require(_duration > 0, "Duration must be > 0");
-
+    function createAuction(string calldata _itemName, uint256 _startPrice) external {
         auctionCount++;
         auctions[auctionCount] = Auction({
             itemName: _itemName,
             startPrice: _startPrice,
-            endTime: block.timestamp + _duration,
             owner: payable(msg.sender),
             highestBidder: address(0),
             highestBid: 0,
             ended: false
         });
 
-        emit AuctionCreated(auctionCount, _itemName, _startPrice, block.timestamp + _duration);
+        emit AuctionCreated(auctionCount, _itemName, _startPrice);
     }
 
     function placeBid(uint256 _id) external payable auctionActive(_id) nonReentrant {
@@ -70,7 +65,6 @@ contract AuctionSystem is ReentrancyGuard {
     function endAuction(uint256 _id) external onlyOwner(_id) nonReentrant {
         Auction storage auction = auctions[_id];
         require(!auction.ended, "Already ended");
-        require(block.timestamp >= auction.endTime, "Auction still ongoing");
 
         auction.ended = true;
 
@@ -84,7 +78,6 @@ contract AuctionSystem is ReentrancyGuard {
     function getAuction(uint256 _id) external view returns (
         string memory itemName,
         uint256 startPrice,
-        uint256 endTime,
         address highestBidder,
         uint256 highestBid,
         bool ended
@@ -93,7 +86,6 @@ contract AuctionSystem is ReentrancyGuard {
         return (
             auction.itemName,
             auction.startPrice,
-            auction.endTime,
             auction.highestBidder,
             auction.highestBid,
             auction.ended
@@ -101,7 +93,6 @@ contract AuctionSystem is ReentrancyGuard {
     }
 
     function getAuctionCount() public view returns (uint) {
-    return auctionCount;
-}
-
+        return auctionCount;
+    }
 }
