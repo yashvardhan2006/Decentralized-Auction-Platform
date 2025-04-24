@@ -57,7 +57,7 @@ export default function RegisterPage() {
       .insert([{
         email,
         username,
-        eth_address: etherealAddressKey,
+        walletAddress: etherealAddressKey,
         // created_at will default to now() if your schema is set up that way
       }])
 
