@@ -2,54 +2,199 @@
 import type React from "react"
 import { useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"              // ← for redirect
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"              // ← your client
 import { Camera, Info, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export default function SellPage() {
-
+  const router = useRouter()
+  const formRef = useRef<HTMLFormElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [images, setImages] = useState<string[]>([])
+  const [files, setFiles] = useState<File[]>([])
   const [selectedCondition, setSelectedCondition] = useState<string>("")
   const [customDuration, setCustomDuration] = useState<string>("7")
   const [formError, setFormError] = useState(false)
+
   const itemConditionRef = useRef<HTMLDivElement>(null)
   const itemPhotosRef = useRef<HTMLDivElement>(null)
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError(false)
-    if (!selectedCondition) {
-      itemConditionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+
+    // make sure the form ref is set
+    if (!formRef.current) {
+      console.error("Form ref not assigned")
+      return setFormError(true)
+    }
+    const supabase = createClientComponentClient()
+    // get the logged-in user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      console.error("Not logged in", authError)
       setFormError(true)
       return
     }
 
-    if (images.length === 0) {
-      itemPhotosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    // fetch the int8 PK from your `users` table by email
+    const { data: profile, error: profileError } = await supabase
+      .from("users")
+      .select("user_id")
+      .eq("email", user.email)
+      .single()
+
+    if (profileError || !profile) {
+      console.error("Could not load profile", profileError)
       setFormError(true)
       return
-    }    
+    }
+
+    // simple validation
+    if (!selectedCondition) {
+      itemConditionRef.current?.scrollIntoView({ behavior: "smooth" })
+      return setFormError(true)
+    }
 
     setIsSubmitting(true)
 
-    setTimeout(() => {
-      setIsSubmitting(false)
-    }, 2000)
-  }
+    // construct FormData from the actual form DOM node
+    const fd = new FormData(formRef.current)
+
+    // read your named fields…
+    const title        = fd.get("title")?.toString()       || ""
+    const description  = fd.get("description")?.toString() || ""
+    const category     = fd.get("category")?.toString()    || ""
+    const startPrice   = parseFloat(fd.get("starting-price")?.toString() || "0")
+    const reservePrice = fd.get("reserve-price") 
+      ? parseFloat(fd.get("reserve-price")!.toString()) 
+      : null
+    const buyNowPrice  = fd.get("buy-now") 
+      ? parseFloat(fd.get("buy-now")!.toString()) 
+      : null
+    const durationDays = parseInt(customDuration, 10)
+    const autoRelist   = fd.get("auto-renew") === "on"
+
+    // insert, wiring in the int8 PK you fetched
+    const now = new Date();
+    const end = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000); // Calculate end time
+    const {
+      data: insertedItem,
+      error: insertError
+    } = await supabase
+      .from("items")
+      .insert({
+        title,
+        description,
+        category,
+        condition: selectedCondition,
+        created_by: profile.user_id,
+        start_price: startPrice,
+        // reserve_price: reservePrice,
+        // buy_now_price: buyNowPrice,
+        duration_days: durationDays,
+        auto_relist: autoRelist,
+        start_time: now.toISOString(),
+        end_time:   end.toISOString(),
+        // image_hashes: images,  ← skip for now
+      })
+      .select("item_id")
+      .single();
+      
+      if (insertError || !insertedItem) {
+        console.error("Item insert failed:", insertError);
+        setFormError(true);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const itemId = insertedItem.item_id;
+      
+      // 1. Upload each file
+      const uploadPromises = files.map((file, idx) => {
+        // create a path: e.g. items/{itemId}/{timestamp}-{filename}
+        const filePath = `items/${itemId}/${Date.now()}-${file.name}`;
+      
+        return supabase.storage
+          .from("image")
+          .upload(filePath, file, { cacheControl: "3600", upsert: false })
+          .then(({ data, error }) => {
+            if (error) throw error;
+            // build a public URL (or just store the path)
+            const { data: publicUrlData } = supabase
+              .storage
+              .from("image")
+              .getPublicUrl(data.path);
+            const publicUrl = publicUrlData.publicUrl;
+      
+            return { idx, path: data.path, publicUrl };
+          });
+      });
+      
+      // 2. Wait for all uploads, then insert into `item_images`
+      try {
+        const uploaded = await Promise.all(uploadPromises);
+      
+        const imageInserts = uploaded.map(({ idx, path, publicUrl }) => ({
+          
+          item_id:    itemId,
+          ipfs_hash:  publicUrl,           // or `publicUrl` if you prefer
+          is_primary: idx === 0,
+          position:   idx + 1,
+        }));
+      
+        const { error: imagesError } = await supabase
+          .from("item_images")
+          .insert(imageInserts);
+      
+        if (imagesError) {
+          console.error("Failed to insert item_images:", imagesError);
+          setFormError(true);
+        } else {
+          router.replace("/dashboard");
+        }
+      
+      } catch (e) {
+        console.error("Upload error:", e);
+        setFormError(true);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const newImages = Array.from(e.target.files).map(() => `/placeholder.svg?height=100&width=100&text=Image`)
-      setImages([...images, ...newImages].slice(0, 5))
-    }
-  }
+    if (!e.target.files) return;
+    const newFiles = Array.from(e.target.files);
+    setFiles(prev => [...prev, ...newFiles].slice(0, 5));
+  };
+
 
   return (
     <div className="container px-4 py-8 md:px-6 md:py-12">
@@ -63,7 +208,7 @@ export default function SellPage() {
       <div className="grid gap-8 md:grid-cols-3">
         {/* Form Section */}
         <div className="md:col-span-2">
-          <form onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
             {/* Item Details Card */}
             <Card>
               <CardHeader>
@@ -74,15 +219,15 @@ export default function SellPage() {
                 {/* Title */}
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
-                  <Input id="title" placeholder="Enter a descriptive title" required />
+                  <Input  id="title" name="title"     placeholder="…" required />
                 </div>
 
                 {/* Category */}
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select required>
+                  <Select required name="category">
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
+                      <SelectValue placeholder="Select a category"  />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="art">Art</SelectItem>
@@ -99,8 +244,7 @@ export default function SellPage() {
                 {/* Description */}
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
+                   <Textarea id="description" name="description"
                     placeholder="Describe your item in detail"
                     className="min-h-[150px]"
                     required
@@ -113,7 +257,7 @@ export default function SellPage() {
                   <RadioGroup value={selectedCondition} onValueChange={setSelectedCondition}>
                     {["new", "used-like-new", "used-excellent", "used-good", "used-fair"].map((cond) => (
                       <div key={cond} className="flex items-center space-x-2">
-                        <RadioGroupItem value={cond} id={cond} />
+                        <RadioGroupItem value={cond}  id={cond} />
                         <Label htmlFor={cond} className="font-normal capitalize">{cond.replace("-", " ")}</Label>
                       </div>
                     ))}
@@ -136,10 +280,10 @@ export default function SellPage() {
                   </div>
 
                   <div className="grid grid-cols-5 gap-4">
-                    {images.map((image, index) => (
+                    {files.map((file, index) => (
                       <div key={index} className="relative aspect-square rounded-md border bg-muted">
                         <img
-                          src={image}
+                          src={URL.createObjectURL(file)}
                           alt={`Item image ${index + 1}`}
                           className="h-full w-full rounded-md object-cover"
                         />
@@ -191,7 +335,7 @@ export default function SellPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="starting-price">Starting Price ($)</Label>
-                  <Input id="starting-price" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+                  <Input id="starting-price" name="starting-price" type="number" min="0.01" step="0.01" placeholder="0.00" required />
                 </div>
 
                 <div className="space-y-2">
@@ -218,7 +362,7 @@ export default function SellPage() {
                   />
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="auto-renew" />
+                  <Checkbox id="auto-renew" name="auto-renew" />
                   <Label htmlFor="auto-renew" className="font-normal">
                     Automatically relist if item does not sell
                   </Label>
