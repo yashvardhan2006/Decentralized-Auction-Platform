@@ -1,20 +1,7 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
-import {
-  ArrowRight,
-  CheckCircle,
-  CreditCard,
-  Gavel,
-  HelpCircle,
-  MessageSquare,
-  Package,
-  Search,
-  Shield,
-  Star,
-  Truck,
-  UserPlus,
-} from "lucide-react"
+import {CheckCircle,CreditCard,Gavel,HelpCircle,MessageSquare,Package,Search,Shield,Star,Truck,UserPlus,} from "lucide-react"
 import { useAuth } from "@/app/context/AuthProvider"   
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
