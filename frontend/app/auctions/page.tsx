@@ -31,6 +31,7 @@ type AuctionRow = {
   item_images: { ipfs_hash: string; is_primary: boolean }[];
 };
 
+
 export default function AuctionsPage() {
   const supabase = createClientComponentClient();
   const [auctions, setAuctions] = useState<{
