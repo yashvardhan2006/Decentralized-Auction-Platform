@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Clock, Heart } from "lucide-react"
+import { Clock, Heart, ArrowRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
@@ -98,33 +98,72 @@ export default function FeaturedAuctions() {
   }
 
   return (
-    <section className="py-12 bg-gray-50 dark:bg-gray-900">
-      <div className="container px-4 md:px-6">
-        <div className="flex flex-col items-center justify-center space-y-4 text-center">
-          <div className="space-y-2">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Featured Auctions</h2>
-            <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
-              Discover our most popular and exciting auctions ending soon.
-            </p>
-          </div>
+    <section className="py-16 bg-gradient-to-br from-rose-50 to-white dark:from-gray-900 dark:to-gray-800">
+      <div className="container mx-auto px-4">
+        {/* Heading */}
+        <div className="text-center mb-12">
+          <h2 className="inline-block text-5xl font-extrabold bg-gradient-to-r from-rose-500 to-purple-500 bg-clip-text text-transparent">
+            Featured Auctions
+          </h2>
+          <p className="mt-4 text-xl text-gray-600 dark:text-gray-400">
+            Discover our most popular and exciting auctions ending soon.
+          </p>
         </div>
-        <div className="mx-auto mt-8 max-w-5xl">
-          <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-8">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="art">Art</TabsTrigger>
-              <TabsTrigger value="collectibles">Collectibles</TabsTrigger>
-              <TabsTrigger value="electronics">Electronics</TabsTrigger>
-              <TabsTrigger value="ending-soon">Ending Soon</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" className="mt-0">
+
+        {/* Tabs */}
+        <Tabs defaultValue="all" className="mb-8">
+          <TabsList className="flex justify-center   bg-white dark:bg-gray-800  items-center space-x-4 mb-8 mx-auto">
+            {[
+              { value: "all", label: "All" },
+              { value: "art", label: "Art" },
+              { value: "collectibles", label: "Collectibles" },
+              { value: "electronics", label: "Electronics" },
+              { value: "ending-soon", label: "Ending Soon" },
+            ].map(({ value, label }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className={`
+        px-6 py-2 text-base font-medium rounded-full transition-colors
+        data-[state=inactive]:text-gray-600 dark:data-[state=inactive]:text-gray-300
+        data-[state=inactive]:hover:bg-gray-200 dark:data-[state=inactive]:hover:bg-gray-700
+        data-[state=active]:bg-rose-600 data-[state=active]:text-white
+      `}
+              >
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+
+          {[
+            { key: "all", items: featuredAuctions },
+            { key: "art", items: featuredAuctions.filter((a) => a.category === "art") },
+            {
+              key: "collectibles",
+              items: featuredAuctions.filter((a) => a.category === "collectibles"),
+            },
+            {
+              key: "electronics",
+              items: featuredAuctions.filter((a) => a.category === "electronics"),
+            },
+            {
+              key: "ending-soon",
+              items: featuredAuctions.filter((a) => a.timeLeft.includes("hours")),
+            },
+          ].map(({ key, items }) => (
+            <TabsContent key={key} value={key}>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {featuredAuctions.map((auction) => (
-                  <Card key={auction.id} className="overflow-hidden">
+                {items.map((auction) => (
+                  <Card
+                    key={auction.id}
+                    className="overflow-hidden relative z-20 transform transition duration-300
+                               hover:scale-105 hover:shadow-2xl cursor-pointer"
+                  >
                     <CardHeader className="p-0">
                       <div className="relative h-48 w-full">
                         <Image
-                          src={auction.image || "/placeholder.svg"}
+                          src={auction.image}
                           alt={auction.title}
                           fill
                           className="object-cover"
@@ -132,32 +171,37 @@ export default function FeaturedAuctions() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="absolute right-2 top-2 h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm dark:bg-gray-950/80"
+                          className="absolute right-3 top-3 h-8 w-8 rounded-full
+                                     bg-white/80 backdrop-blur-sm dark:bg-gray-800/80
+                                     transition-colors hover:bg-white/100 dark:hover:bg-gray-800/90"
                           onClick={() => toggleFavorite(auction.id)}
                         >
                           <Heart
-                            className={`h-4 w-4 ${
-                              favorites.includes(auction.id)
-                                ? "fill-rose-500 text-rose-500"
-                                : "text-gray-500 dark:text-gray-400"
-                            }`}
+                            className={`h-4 w-4 ${favorites.includes(auction.id)
+                              ? "fill-rose-500 text-rose-500"
+                              : "text-gray-500 dark:text-gray-400"
+                              }`}
                           />
                           <span className="sr-only">Toggle favorite</span>
                         </Button>
                       </div>
                     </CardHeader>
                     <CardContent className="p-4">
-                      <Badge className="mb-2 bg-rose-100 text-rose-800 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/30">
+                      <Badge className="mb-2 inline-block transform transition
+                                         hover:scale-110 bg-rose-100 text-rose-800
+                                         dark:bg-rose-900/30 dark:text-rose-300">
                         {auction.category}
                       </Badge>
-                      <h3 className="font-semibold line-clamp-1">{auction.title}</h3>
-                      <div className="mt-2 flex items-center justify-between">
+                      <h3 className="mt-2 font-semibold text-lg line-clamp-1">
+                        {auction.title}
+                      </h3>
+                      <div className="mt-3 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                         <div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Current Bid</p>
+                          <p>Current Bid</p>
                           <p className="font-semibold">${auction.currentBid}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Bids</p>
+                          <p>Bids</p>
                           <p className="font-semibold">{auction.bids}</p>
                         </div>
                       </div>
@@ -167,8 +211,11 @@ export default function FeaturedAuctions() {
                       </div>
                     </CardContent>
                     <CardFooter className="p-4 pt-0">
-                      <Link href={`/auctions/${auction.id}`} className="w-full" passHref>
-                        <Button className="w-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
+                      <Link href={`/auctions/${auction.id}`} passHref>
+                        <Button
+                          className="w-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600
+                                     dark:hover:bg-rose-700 transition-transform hover:scale-105"
+                        >
                           Bid Now
                         </Button>
                       </Link>
@@ -177,76 +224,22 @@ export default function FeaturedAuctions() {
                 ))}
               </div>
             </TabsContent>
-            <TabsContent value="art" className="mt-0">
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {featuredAuctions
-                  .filter((auction) => auction.category === "art")
-                  .map((auction) => (
-                    <Card key={auction.id} className="overflow-hidden">
-                      <CardHeader className="p-0">
-                        <div className="relative h-48 w-full">
-                          <Image
-                            src={auction.image || "/placeholder.svg"}
-                            alt={auction.title}
-                            fill
-                            className="object-cover"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-2 top-2 h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm dark:bg-gray-950/80"
-                            onClick={() => toggleFavorite(auction.id)}
-                          >
-                            <Heart
-                              className={`h-4 w-4 ${
-                                favorites.includes(auction.id)
-                                  ? "fill-rose-500 text-rose-500"
-                                  : "text-gray-500 dark:text-gray-400"
-                              }`}
-                            />
-                            <span className="sr-only">Toggle favorite</span>
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4">
-                        <Badge className="mb-2 bg-rose-100 text-rose-800 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/30">
-                          {auction.category}
-                        </Badge>
-                        <h3 className="font-semibold line-clamp-1">{auction.title}</h3>
-                        <div className="mt-2 flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Current Bid</p>
-                            <p className="font-semibold">${auction.currentBid}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Bids</p>
-                            <p className="font-semibold">{auction.bids}</p>
-                          </div>
-                        </div>
-                        <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-                          <Clock className="mr-1 h-4 w-4" />
-                          {auction.timeLeft}
-                        </div>
-                      </CardContent>
-                      <CardFooter className="p-4 pt-0">
-                        <Link href={`/auctions/${auction.id}`} className="w-full" passHref>
-                          <Button className="w-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
-                            Bid Now
-                          </Button>
-                        </Link>
-                      </CardFooter>
-                    </Card>
-                  ))}
-              </div>
-            </TabsContent>
-            {/* Other tabs would follow the same pattern */}
-          </Tabs>
-          <div className="mt-8 flex justify-center">
-            <Link href="/auctions" passHref>
-              <Button variant="outline">View All Auctions</Button>
-            </Link>
-          </div>
-        </div>
+          ))}
+        </Tabs>
+
+        {/* View All */}
+        <div className="flex justify-center mt-12">
+  <Link href="/auctions" passHref>
+    <Button
+      variant="outline"
+      className="px-12 py-5 text-lg font-bold rounded-full border-2 border-rose-600 text-rose-600 shadow-md transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-gradient-to-r hover:from-rose-600 hover:to-pink-500 hover:text-white dark:hover:from-rose-500 dark:hover:to-purple-600"
+    >
+      View All Auctions
+    </Button>
+  </Link>
+</div>
+
+
       </div>
     </section>
   )

@@ -1,12 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, User } from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import FullScreenLoader from "@/app/components/FullScreenLoader"
 import { useAuth } from "../../context/AuthProvider"
 
 export default function LoginPage() {
@@ -14,31 +18,49 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  const [busy, setBusy] = useState(false)
   const { session, loading } = useAuth()
   const router = useRouter()
   const supabase = createClientComponentClient()
 
-  // Redirect to dashboard if already logged in
+  // redirect if already logged in
   useEffect(() => {
-    if (!loading && session) {
-      router.push("/dashboard")
-    }
+    if (!loading && session) router.push("/dashboard")
   }, [session, loading, router])
+
+  // apply body background gradient classes
+  useEffect(() => {
+    document.body.classList.add(
+      "bg-gradient-to-tr",
+      "from-rose-50",
+      "to-white",
+      "dark:from-gray-900",
+      "dark:to-gray-800"
+    )
+    return () => {
+      document.body.classList.remove(
+        "bg-gradient-to-tr",
+        "from-rose-50",
+        "to-white",
+        "dark:from-gray-900",
+        "dark:to-gray-800"
+      )
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-
     if (!email || !password) {
       setError("Please enter both email and password.")
       return
     }
-
+    setBusy(true)
     const { error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
-
+    setBusy(false)
     if (loginError) {
       setError(loginError.message)
     } else {
@@ -51,97 +73,111 @@ export default function LoginPage() {
     router.push("/auth/login")
   }
 
+  if (loading || busy) {
+    return <FullScreenLoader message={busy ? "Signing in…" : "Checking session…"} />
+  }
+
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-        <div className="flex flex-col space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">Login</h1>
-          <p className="text-sm text-muted-foreground">
-            Sign in with your email and password
+    <div className="flex h-screen w-screen items-center justify-center px-4">
+      <Card className="w-full max-w-md mx-4 sm:mx-0 backdrop-blur-sm bg-white/80 dark:bg-gray-900/80 shadow-xl rounded-2xl">
+        <CardHeader className="pt-10 pb-4 text-center">
+          <User className="mx-auto mb-4 h-10 w-10 text-rose-500 animate-bounce" />
+          <h1 className="text-3xl font-bold">Welcome Back</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Sign in to your account
           </p>
-        </div>
+        </CardHeader>
 
-        {!loading && !session ? (
-          <form onSubmit={handleLogin} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-9"
-                />
+        <CardContent className="px-10 pb-10 space-y-6">
+          {!session ? (
+            <form onSubmit={handleLogin} className="space-y-5">
+              {/* Email */}
+              <div>
+                <Label htmlFor="email" className="block text-sm font-medium">
+                  Email address
+                </Label>
+                <div className="relative mt-1">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 focus:border-rose-500 focus:ring-rose-500 transition"
+                    required
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 pr-9"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className="sr-only">
-                    {showPassword ? "Hide password" : "Show password"}
-                  </span>
-                </Button>
+              {/* Password */}
+              <div>
+                <Label htmlFor="password" className="block text-sm font-medium">
+                  Password
+                </Label>
+                <div className="relative mt-1">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10 focus:border-rose-500 focus:ring-rose-500 transition"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                    onClick={() => setShowPassword((v) => !v)}
+                  >
+                    {showPassword ? <EyeOff className="text-gray-500" /> : <Eye className="text-gray-500" />}
+                  </Button>
+                </div>
+                <div className="mt-1 text-right">
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-sm text-rose-600 hover:underline transition"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
               </div>
-            </div>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && <p className="text-sm text-red-600">{error}</p>}
 
-            <Button
-              type="submit"
-              className="bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700"
-            >
-              Login
-            </Button>
-          </form>
-        ) : (
-          !loading && (
-            <div className="text-center">
-              <p>You are already logged in.</p>
+              <Button
+                type="submit"
+                className="w-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700 transition"
+              >
+                Sign In
+              </Button>
+            </form>
+          ) : (
+            <div className="space-y-4 text-center">
+              <p className="text-gray-700 dark:text-gray-300">
+                You’re already logged in.
+              </p>
               <Button
                 variant="destructive"
+                className="w-full"
                 onClick={handleLogout}
-                className="mt-4"
               >
                 Logout
               </Button>
             </div>
-          )
-        )}
+          )}
 
-        <p className="px-8 text-center text-sm text-muted-foreground">
-          Don’t have an account?{" "}
-          <a
-            href="/auth/register"
-            className="underline underline-offset-4 hover:text-primary"
-          >
-            Register
-          </a>
-        </p>
-      </div>
+          <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+            Don’t have an account?{" "}
+            <Link href="/auth/register" className="font-medium text-rose-600 hover:underline transition">
+              Create one
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
     </div>
   )
 }
