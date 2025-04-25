@@ -6,7 +6,6 @@ import {
   getCurrentAccount,
   isMetaMaskInstalled,startMetaMaskOnboarding,
 } from "@/app/lib/metamask"
-
 export function useWallet() {
   const [account, setAccount] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
