@@ -8,20 +8,16 @@ export const isMetaMaskInstalled = (): boolean => {
     (window as any).ethereum.isMetaMask
   )
 }
-
 export const startMetaMaskOnboarding = () => {
   const onboarding = new MetaMaskOnboarding({ forwarderOrigin })
   onboarding.startOnboarding()
 }
-
 export const connectMetaMask = async (): Promise<string> => {
   const ethereum = (window as any).ethereum
-
   if (!isMetaMaskInstalled()) {
     startMetaMaskOnboarding()
     throw new Error("MetaMask not installed — redirecting to install page.")
   }
-
   try {
     const accounts: string[] = await ethereum.request({
       method: "eth_requestAccounts",
@@ -32,12 +28,9 @@ export const connectMetaMask = async (): Promise<string> => {
     throw new Error("MetaMask connection failed.")
   }
 }
-
 export const getCurrentAccount = async (): Promise<string | null> => {
   const ethereum = (window as any).ethereum
-
   if (!isMetaMaskInstalled()) return null
-
   try {
     const accounts: string[] = await ethereum.request({ method: "eth_accounts" })
     return accounts.length > 0 ? accounts[0] : null
