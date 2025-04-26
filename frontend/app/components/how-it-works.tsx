@@ -1,56 +1,109 @@
-import { Gavel, Package, Search, UserPlus } from "lucide-react"
+"use client"
+
+import type React from "react"
+
+import { UserPlus, Search, DollarSign, Award } from "lucide-react"
+import { motion } from "framer-motion"
 
 export default function HowItWorks() {
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2,
+      },
+    },
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  }
+
   return (
-    <section className="py-12 bg-gray-50 dark:bg-gray-900">
-      <div className="px-4 md:px-6">
-        <div className="flex flex-col items-center justify-center space-y-4 text-center">
-          <div className="space-y-2">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">How It Works</h2>
-            <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
-              Our auction platform is easy to use and secure. Here's how to get started.
-            </p>
-          </div>
-        </div>
-        <div className="mx-auto mt-8 grid max-w-5xl gap-6 sm:grid-cols-2 md:grid-cols-4">
-          <div className="flex flex-col items-center space-y-2 rounded-lg border border-gray-200 p-6 dark:border-gray-800">
-            <div className="rounded-full bg-rose-100 p-3 dark:bg-rose-900/30">
-              <UserPlus className="h-6 w-6 text-rose-600 dark:text-rose-400" />
-            </div>
-            <h3 className="text-xl font-bold">Create Account</h3>
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              Sign up for free and complete your profile to start bidding or selling.
-            </p>
-          </div>
-          <div className="flex flex-col items-center space-y-2 rounded-lg border border-gray-200 p-6 dark:border-gray-800">
-            <div className="rounded-full bg-rose-100 p-3 dark:bg-rose-900/30">
-              <Search className="h-6 w-6 text-rose-600 dark:text-rose-400" />
-            </div>
-            <h3 className="text-xl font-bold">Find Items</h3>
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              Browse categories or search for specific items you're interested in.
-            </p>
-          </div>
-          <div className="flex flex-col items-center space-y-2 rounded-lg border border-gray-200 p-6 dark:border-gray-800">
-            <div className="rounded-full bg-rose-100 p-3 dark:bg-rose-900/30">
-              <Gavel className="h-6 w-6 text-rose-600 dark:text-rose-400" />
-            </div>
-            <h3 className="text-xl font-bold">Place Bids</h3>
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              Set your maximum bid and let our system automatically bid for you.
-            </p>
-          </div>
-          <div className="flex flex-col items-center space-y-2 rounded-lg border border-gray-200 p-6 dark:border-gray-800">
-            <div className="rounded-full bg-rose-100 p-3 dark:bg-rose-900/30">
-              <Package className="h-6 w-6 text-rose-600 dark:text-rose-400" />
-            </div>
-            <h3 className="text-xl font-bold">Win & Receive</h3>
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              Pay securely and receive your item directly from the seller.
-            </p>
-          </div>
-        </div>
+    <section className="mb-16">
+      <div className="text-center mb-8">
+        <motion.h2
+          className="text-3xl font-bold mb-2 text-white"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          How It Works
+        </motion.h2>
+        <motion.p
+          className="text-gray-400"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          Our auction platform is easy to use and secure. Here's how to get started.
+        </motion.p>
       </div>
+
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        variants={container}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: "-100px" }}
+      >
+        <motion.div variants={item}>
+          <StepCard
+            icon={<UserPlus className="h-8 w-8 text-white" />}
+            title="Create Account"
+            description="Sign up for free and complete your profile for a better experience."
+            bgColor="bg-gradient-to-br from-[#ff6b2b] to-[#ff9259]"
+          />
+        </motion.div>
+
+        <motion.div variants={item}>
+          <StepCard
+            icon={<Search className="h-8 w-8 text-white" />}
+            title="Find Items"
+            description="Browse categories or search for items you're interested in."
+            bgColor="bg-gradient-to-br from-[#b44aff] to-[#cd8aff]"
+          />
+        </motion.div>
+
+        <motion.div variants={item}>
+          <StepCard
+            icon={<DollarSign className="h-8 w-8 text-white" />}
+            title="Place Bids"
+            description="Set your maximum bid and let our system automatically bid for you."
+            bgColor="bg-gradient-to-br from-[#006e5f] to-[#00a58f]"
+          />
+        </motion.div>
+
+        <motion.div variants={item}>
+          <StepCard
+            icon={<Award className="h-8 w-8 text-white" />}
+            title="Win & Receive"
+            description="The winning bid secures your item. Payment is processed through our secure system."
+            bgColor="bg-gradient-to-br from-[#2e0068] to-[#5c1ac5]"
+          />
+        </motion.div>
+      </motion.div>
     </section>
+  )
+}
+
+interface StepCardProps {
+  icon: React.ReactNode
+  title: string
+  description: string
+  bgColor: string
+}
+
+function StepCard({ icon, title, description, bgColor }: StepCardProps) {
+  return (
+    <div
+      className={`${bgColor} p-6 rounded-2xl text-white h-full transition-transform duration-300 hover:scale-105 hover:shadow-lg`}
+    >
+      <div className="bg-white/20 p-3 rounded-full w-fit mb-4">{icon}</div>
+      <h3 className="text-xl font-bold mb-2">{title}</h3>
+      <p className="text-sm opacity-90">{description}</p>
+    </div>
   )
 }

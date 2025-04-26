@@ -1,4 +1,3 @@
-// app/auctions/[id]/page.tsx
 "use client";
 import { ethers } from "ethers";
 import { AUCTION_ABI, AUCTION_ADDRESS } from "@/app/lib/auction";
@@ -8,13 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Clock,
-  DollarSign,
-  Eye,
-  Heart,
-  History,
-  Info,
-  Share2,
+  Clock,DollarSign,Eye,Heart,History,Info,Share2,
   Shield,
   Tag,
   Truck,

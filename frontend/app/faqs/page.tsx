@@ -12,7 +12,7 @@ export default function FAQsPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-rose-50 to-white py-20 dark:from-gray-900 dark:to-gray-950">
+      {/* <section className="relative bg-gradient-to-b from-rose-50 to-white py-20 dark:from-gray-900 dark:to-gray-950">
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12">
             <div className="flex flex-col justify-center space-y-4">
@@ -49,7 +49,7 @@ export default function FAQsPage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Search Section */}
       <section className="py-12 bg-white dark:bg-gray-950">
@@ -67,7 +67,7 @@ export default function FAQsPage() {
                   className="w-full bg-white pl-8 dark:bg-gray-950"
                 />
               </div>
-              <Button className="bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">Search</Button>
+              <Button className="bg-purple-900 hover:bg-purple-800 hover:cursor-pointer">Search</Button>
             </div>
           </div>
         </div>
@@ -84,7 +84,7 @@ export default function FAQsPage() {
               <TabsTrigger value="bidding">Bidding</TabsTrigger>
               <TabsTrigger value="payment">Payment</TabsTrigger>
               <TabsTrigger value="selling">Selling</TabsTrigger>
-              <TabsTrigger value="security">Security</TabsTrigger>
+              {/* <TabsTrigger value="security">Security</TabsTrigger> */}
             </TabsList>
 
             {/* General FAQs */}
@@ -675,13 +675,13 @@ export default function FAQsPage() {
           <div className="mx-auto max-w-3xl">
             <div className="rounded-lg border bg-card p-8 text-card-foreground shadow-sm">
               <div className="flex flex-col items-center text-center">
-                <HelpCircle className="h-12 w-12 text-rose-600 dark:text-rose-400" />
+                <HelpCircle className="h-12 w-12 text-[]" />
                 <h3 className="mt-4 text-2xl font-bold">Still have questions?</h3>
                 <p className="mt-2 text-muted-foreground">
                   Our support team is here to help. Contact us and we'll get back to you as soon as possible.
                 </p>
                 <div className="mt-6 flex flex-col gap-4 sm:flex-row">
-                  <Button className="bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
+                  <Button className="bg-purple-950 hover:bg-purple-900 hover:cursor-pointer text-white">
                     <Mail className="mr-2 h-4 w-4" />
                     Email Support
                   </Button>
@@ -697,7 +697,7 @@ export default function FAQsPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-rose-600 py-12 text-white dark:bg-rose-900">
+      <section className="bg-gradient-to-r from-purple-950 to-purple-1000 bg- py-12 text-white ">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">

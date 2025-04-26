@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import FullScreenLoader from "@/app/components/FullScreenLoader"
-
+import React from "react";
+import { BackgroundBeamsWithCollision } from "../../../components/ui/background-beams-with-collision";
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
   const [username, setUsername] = useState("")
@@ -73,8 +74,9 @@ export default function RegisterPage() {
   }
 
   return (
+    <BackgroundBeamsWithCollision className="bg-[#170E32]/80">
     <div className="flex h-screen w-screen items-center justify-center px-4">
-      <Card className="w-full max-w-lg backdrop-blur-sm bg-white/80 dark:bg-gray-900/80 shadow-xl rounded-2xl">
+      <Card className="w-full max-w-lg backdrop-blur-sm bg-transparent/50 bg-gradient-to-b from-gray-850 to-[#2C1352] shadow-xl rounded-2xl">
         <CardHeader className="pt-10 pb-4 text-center">
           <Mail className="mx-auto mb-4 h-10 w-10 text-rose-500 animate-bounce" />
           <h1 className="text-3xl font-bold">Create your account</h1>
@@ -170,5 +172,6 @@ export default function RegisterPage() {
         </CardContent>
       </Card>
     </div>
+    </BackgroundBeamsWithCollision>
   )
 }
