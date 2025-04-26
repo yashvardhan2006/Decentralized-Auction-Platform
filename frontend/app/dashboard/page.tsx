@@ -1,7 +1,6 @@
-// app/dashboard/page.tsx
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/app/context/AuthProvider"
 import { Loader2 } from "lucide-react"
@@ -24,10 +23,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const supabase = createClientComponentClient()
+
+  // State for DB-driven data
+  const [activeAuctions, setActiveAuctions] = useState<any[]>([])
+  const [wonAuctions, setWonAuctions] = useState<any[]>([])
+  const [watchlist, setWatchlist] = useState<any[]>([])
+  const [sellingItems, setSellingItems] = useState<any[]>([])
+  const [dbLoading, setDbLoading] = useState(true)
 
   // Redirect to login if unauthenticated
   useEffect(() => {
@@ -36,8 +44,172 @@ export default function DashboardPage() {
     }
   }, [user, loading, router])
 
+  // Fetch dashboard data from DB
+  useEffect(() => {
+    if (!user) return
+    async function fetchData() {
+      setDbLoading(true)
+      // 1. Get user_id
+      const { data: profile } = await supabase
+        .from("users")
+        .select("user_id")
+        .eq("email", user.email)
+        .single()
+      if (!profile) {
+        setDbLoading(false)
+        return
+      }
+      const userId = profile.user_id
+
+      // 2. Active bids (auctions where user is highest bidder or has bid)
+      const { data: myBids } = await supabase
+        .from("bids")
+        .select("item_id, amount")
+        .eq("bidder_id", userId)
+        .order("bid_time", { ascending: false })
+      const uniqueBidItemIds = [...new Set((myBids || []).map((b: any) => b.item_id))]
+      let active: any[] = []
+      if (uniqueBidItemIds.length) {
+        const { data: items } = await supabase
+          .from("items")
+          .select("item_id, title, category, start_price, end_time")
+          .in("item_id", uniqueBidItemIds)
+        // Get highest bid for each item
+        for (const item of items || []) {
+          const { data: topBid } = await supabase
+            .from("bids")
+            .select("bidder_id, amount")
+            .eq("item_id", item.item_id)
+            .order("amount", { ascending: false })
+            .limit(1)
+            .single()
+          const isWinning = topBid?.bidder_id === userId
+          // Get bid count
+          const { count } = await supabase
+            .from("bids")
+            .select("*", { count: "exact", head: true })
+            .eq("item_id", item.item_id)
+          active.push({
+            id: item.item_id,
+            title: item.title,
+            image: "/placeholder.svg",
+            currentBid: topBid?.amount ?? item.start_price,
+            timeLeft: getTimeLeft(item.end_time),
+            bids: count ?? 0,
+            isWinning,
+          })
+        }
+      }
+      setActiveAuctions(active)
+
+      // 3. Won auctions (user is highest bidder and auction ended)
+      const now = new Date()
+      let won: any[] = []
+      if (uniqueBidItemIds.length) {
+        const { data: endedItems } = await supabase
+          .from("items")
+          .select("item_id, title, end_time")
+          .lt("end_time", now.toISOString())
+          .in("item_id", uniqueBidItemIds)
+        for (const item of endedItems || []) {
+          const { data: topBid } = await supabase
+            .from("bids")
+            .select("bidder_id, amount")
+            .eq("item_id", item.item_id)
+            .order("amount", { ascending: false })
+            .limit(1)
+            .single()
+          if (topBid?.bidder_id === userId) {
+            won.push({
+              id: item.item_id,
+              title: item.title,
+              image: "/placeholder.svg",
+              finalPrice: topBid.amount,
+              date: new Date(item.end_time).toLocaleDateString(),
+              status: "Pending", // You can enhance this with payment/shipping info
+            })
+          }
+        }
+      }
+      setWonAuctions(won)
+
+      // 4. Watchlist
+      const { data: watchRows } = await supabase
+        .from("watchlists")
+        .select("item_id")
+        .eq("user_id", userId)
+      let watch: any[] = []
+      if (watchRows && watchRows.length) {
+        const ids = watchRows.map((w: any) => w.item_id)
+        const { data: items } = await supabase
+          .from("items")
+          .select("item_id, title, end_time, start_price")
+          .in("item_id", ids)
+        for (const item of items || []) {
+          const { count } = await supabase
+            .from("bids")
+            .select("*", { count: "exact", head: true })
+            .eq("item_id", item.item_id)
+          watch.push({
+            id: item.item_id,
+            title: item.title,
+            image: "/placeholder.svg",
+            currentBid: item.start_price,
+            timeLeft: getTimeLeft(item.end_time),
+            bids: count ?? 0,
+          })
+        }
+      }
+      setWatchlist(watch)
+
+      // 5. Selling (items created by user)
+      const { data: selling } = await supabase
+        .from("items")
+        .select("item_id, title, end_time, start_price")
+        .eq("created_by", userId)
+      let sellingArr: any[] = []
+      for (const item of selling || []) {
+        const { count } = await supabase
+          .from("bids")
+          .select("*", { count: "exact", head: true })
+          .eq("item_id", item.item_id)
+        // You can add views if you track them
+        sellingArr.push({
+          id: item.item_id,
+          title: item.title,
+          image: "/placeholder.svg",
+          currentBid: item.start_price,
+          timeLeft: getTimeLeft(item.end_time),
+          bids: count ?? 0,
+          views: 0,
+        })
+      }
+      setSellingItems(sellingArr)
+      setDbLoading(false)
+    }
+    fetchData()
+    // eslint-disable-next-line
+  }, [user])
+
+  // Remove from watchlist
+  async function handleRemoveWatch(itemId: number) {
+    if (!user) return
+    const { data: profile } = await supabase
+      .from("users")
+      .select("user_id")
+      .eq("email", user.email)
+      .single()
+    if (!profile) return
+    await supabase
+      .from("watchlists")
+      .delete()
+      .eq("user_id", profile.user_id)
+      .eq("item_id", itemId)
+    setWatchlist(watchlist.filter((a) => a.id !== itemId))
+  }
+
   // While loading or redirecting, show spinner
-  if (loading || !user) {
+  if (loading || !user || dbLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -45,28 +217,6 @@ export default function DashboardPage() {
       </div>
     )
   }
-
-  // Mock data
-  const activeAuctions = [
-    { id: 1, title: "Vintage Camera Collection", image: "/placeholder.svg", currentBid: 450, timeLeft: "2 days, 5 hours", bids: 12, isWinning: true },
-    { id: 2, title: "Modern Abstract Painting", image: "/placeholder.svg", currentBid: 320, timeLeft: "1 day, 3 hours", bids: 8, isWinning: false },
-    { id: 3, title: "Antique Wooden Desk", image: "/placeholder.svg", currentBid: 750, timeLeft: "4 days, 12 hours", bids: 15, isWinning: false },
-  ]
-
-  const wonAuctions = [
-    { id: 4, title: "Vintage Vinyl Records (Set of 10)", image: "/placeholder.svg", finalPrice: 125, date: "April 10, 2025", status: "Paid, Shipping" },
-    { id: 5, title: "Handcrafted Ceramic Vase", image: "/placeholder.svg", finalPrice: 85, date: "March 28, 2025", status: "Delivered" },
-  ]
-
-  const watchlist = [
-    { id: 6, title: "Limited Edition Watch", image: "/placeholder.svg", currentBid: 1200, timeLeft: "6 hours", bids: 25 },
-    { id: 7, title: "Signed Sports Memorabilia", image: "/placeholder.svg", currentBid: 580, timeLeft: "3 days, 8 hours", bids: 18 },
-  ]
-
-  const sellingItems = [
-    { id: 8, title: "Vintage Leather Jacket", image: "/placeholder.svg", currentBid: 175, timeLeft: "5 days, 2 hours", bids: 7, views: 42 },
-    { id: 9, title: "Rare Comic Book Collection", image: "/placeholder.svg", currentBid: 320, timeLeft: "2 days, 14 hours", bids: 12, views: 89 },
-  ]
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -96,22 +246,22 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Total Bids</CardTitle></CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">24</div>
-              <p className="text-xs text-muted-foreground">+5 from last week</p>
+              <div className="text-2xl font-bold">{activeAuctions.length}</div>
+              <p className="text-xs text-muted-foreground">Active bids</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Active Auctions</CardTitle></CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">3</div>
-              <p className="text-xs text-muted-foreground">2 ending soon</p>
+              <div className="text-2xl font-bold">{sellingItems.length}</div>
+              <p className="text-xs text-muted-foreground">You're selling</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Watchlist</CardTitle></CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">7</div>
-              <p className="text-xs text-muted-foreground">1 with price drop</p>
+              <div className="text-2xl font-bold">{watchlist.length}</div>
+              <p className="text-xs text-muted-foreground">Items watched</p>
             </CardContent>
           </Card>
         </div>
@@ -156,7 +306,9 @@ export default function DashboardPage() {
                             <Link href={`/auctions/${a.id}`} passHref>
                               <Button size="sm" className="h-8 bg-rose-600 hover:bg-rose-700">Increase Bid</Button>
                             </Link>
-                            <Button size="sm" variant="outline" className="h-8">View Details</Button>
+                            <Link href={`/auctions/${a.id}`} passHref>
+                              <Button size="sm" variant="outline" className="h-8">View Details</Button>
+                            </Link>
                           </div>
                         </div>
                       </div>
@@ -205,7 +357,9 @@ export default function DashboardPage() {
                           </div>
                           <div className="mt-1 text-sm text-muted-foreground">Status: {a.status}</div>
                           <div className="mt-3 flex items-center gap-2">
-                            <Button size="sm" className="h-8 bg-rose-600 hover:bg-rose-700">View Details</Button>
+                            <Link href={`/auctions/${a.id}`} passHref>
+                              <Button size="sm" className="h-8 bg-rose-600 hover:bg-rose-700">View Details</Button>
+                            </Link>
                             <Button size="sm" variant="outline" className="h-8">Contact Seller</Button>
                           </div>
                         </div>
@@ -243,7 +397,12 @@ export default function DashboardPage() {
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <Link href={`/auctions/${a.id}`} className="font-medium hover:underline">{a.title}</Link>
-                            <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-rose-600 hover:bg-rose-50"
+                              onClick={() => handleRemoveWatch(a.id)}
+                            >
                               <Heart className="mr-1 h-4 w-4 fill-rose-500" /> Remove
                             </Button>
                           </div>
@@ -262,7 +421,9 @@ export default function DashboardPage() {
                             <Link href={`/auctions/${a.id}`} passHref>
                               <Button size="sm" className="h-8 bg-rose-600 hover:bg-rose-700">Bid Now</Button>
                             </Link>
-                            <Button size="sm" variant="outline" className="h-8">View Details</Button>
+                            <Link href={`/auctions/${a.id}`} passHref>
+                              <Button size="sm" variant="outline" className="h-8">View Details</Button>
+                            </Link>
                           </div>
                         </div>
                       </div>
@@ -317,7 +478,9 @@ export default function DashboardPage() {
                           </div>
                           <div className="mt-3 flex items-center gap-2">
                             <Button size="sm" className="h-8 bg-rose-600 hover:bg-rose-700">Edit Listing</Button>
-                            <Button size="sm" variant="outline" className="h-8">View Details</Button>
+                            <Link href={`/auctions/${a.id}`} passHref>
+                              <Button size="sm" variant="outline" className="h-8">View Details</Button>
+                            </Link>
                           </div>
                         </div>
                       </div>
@@ -344,4 +507,18 @@ export default function DashboardPage() {
       </div>
     </div>
   )
+}
+
+// Helper to format time left
+function getTimeLeft(endTime: string) {
+  const end = new Date(endTime).getTime()
+  const now = Date.now()
+  const diff = Math.max(end - now, 0)
+  const days = Math.floor(diff / 86400000)
+  const hours = Math.floor((diff % 86400000) / 3600000)
+  const mins = Math.floor((diff % 3600000) / 60000)
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${mins}m`
+  if (mins > 0) return `${mins}m`
+  return "Ended"
 }
