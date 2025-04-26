@@ -46,7 +46,7 @@ export default function Home() {
         </Link>
       )} */}
 
-      <AuthButtons/>
+      
               </div>
               </div>
 <div className="-z-1 absolute w-[100vw] h-[180vh] -left-10 top-[20vh] scale-[3.25] overflow-hidden">
