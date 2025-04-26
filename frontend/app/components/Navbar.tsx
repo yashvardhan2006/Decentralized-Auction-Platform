@@ -99,7 +99,7 @@ export default function Navbar() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex space-x-10 text-[16px] font-medium ml-10">
           <Link href="/auctions" className="hover:text-rose-600 transition">Browse Auctions</Link>
-          <Link href="/categories" className="hover:text-rose-600 transition">Categories</Link>
+          {/* <Link href="/categories" className="hover:text-rose-600 transition">Categories</Link> */}
           <Link href="/sell" className="hover:text-rose-600 transition">Sell an Item</Link>
           <Link href="/how-it-works" className="hover:text-rose-600 transition">How It Works</Link>
           <Link href="/faqs" className="hover:text-rose-600 transition">FAQs</Link>
