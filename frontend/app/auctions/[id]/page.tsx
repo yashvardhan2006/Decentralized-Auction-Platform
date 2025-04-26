@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Clock,DollarSign,Eye,Heart,History,Info,Share2,
+  Clock, DollarSign, Eye, Heart, History, Info, Share2,
   Shield,
   Tag,
   Truck,
@@ -31,6 +31,7 @@ interface ItemImage {
 }
 interface ItemRow {
   item_id: number;
+  auction_id: number; // <-- Add this line
   title: string;
   description: string;
   category: string;
@@ -60,13 +61,15 @@ export default function AuctionDetailPage({
   const [primaryUrl, setPrimaryUrl] = useState<string>("/placeholder.svg");
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [isEnding, setIsEnding] = useState(false);
+  const [endError, setEndError] = useState<string | null>(null);
+  const [auctionEnded, setAuctionEnded] = useState(false);
   const [isWatching, setIsWatching] = useState(false);
   const [dbUserId, setDbUserId] = useState<number | null>(null);
   const [bidAmount, setBidAmount] = useState<number>(0);
   const [isBidding, setIsBidding] = useState(false);
   const [bidError, setBidError] = useState<string | null>(null);
-  const { account, installed, connectAndSave } = useWallet ? useWallet() : { account: null, installed: false, connectAndSave: async () => {} };
+  const { account, installed, connectAndSave } = useWallet ? useWallet() : { account: null, installed: false, connectAndSave: async () => { } };
 
   async function fetchBids() {
     const { data, error } = await supabase
@@ -83,6 +86,7 @@ export default function AuctionDetailPage({
       setMaxBid(data.length > 0 ? data[0].amount : item?.start_price || 0);
     }
   }
+  
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -124,8 +128,8 @@ export default function AuctionDetailPage({
         ipfs_hash.startsWith("http")
           ? ipfs_hash
           : supabase.storage
-              .from("image")
-              .getPublicUrl(ipfs_hash).data.publicUrl
+            .from("image")
+            .getPublicUrl(ipfs_hash).data.publicUrl
       );
 
       // primary
@@ -159,15 +163,60 @@ export default function AuctionDetailPage({
     return () => clearInterval(interval);
   }, [params.id, supabase]);
   const minBid = maxBid > 0 ? Math.ceil(maxBid + 1) : Math.ceil(item?.start_price * 1.05);
-  async function getAuctionOnChain(itemId: number) {
+  async function getAuctionOnChain(auctionId: number) {
     const provider = new ethers.BrowserProvider((window as any).ethereum);
     const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, provider);
-    const auction = await contract.auctions(itemId);
+    const auction = await contract.auctions(auctionId);
     return {
       highestBid: Number(ethers.formatEther(auction.highestBid)),
       highestBidder: auction.highestBidder,
+      owner: auction.owner,
     };
   }
+  async function handleEndAuction() {
+    setEndError(null);
+    setIsEnding(true);
+    try {
+      if (!installed) throw new Error("Please install MetaMask");
+      if (!account) {
+        await connectAndSave?.();
+        if (!account) throw new Error("Wallet not connected");
+      }
+      if (!item) throw new Error("No item loaded");
+      if (!item.auction_id) throw new Error("No auction_id found for this item");
+
+      // Use auction_id for on-chain lookup
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, provider);
+      const auction = await contract.auctions(item.auction_id);
+      if (auction.owner.toLowerCase() !== account.toLowerCase()) {
+        throw new Error("You are not the auction owner (on-chain check failed)");
+      }
+
+      // 1. End auction on-chain
+      const signer = await provider.getSigner();
+      const contractWithSigner = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, signer);
+
+      const tx = await contractWithSigner.endAuction(item.auction_id);
+      await tx.wait();
+
+      // 2. Update auction status in DB
+      await supabase
+        .from("items")
+        .update({ status: "ended" })
+        .eq("item_id", item.item_id);
+
+      setAuctionEnded(true);
+      alert("Auction closed and funds transferred to you!");
+    } catch (err: any) {
+      setEndError(err?.message || "Failed to close auction");
+      console.error("End auction failed:", err);
+    } finally {
+      setIsEnding(false);
+    }
+  }
+  
+
   async function handleBid() {
     setBidError(null);
     if (!installed) {
@@ -182,6 +231,10 @@ export default function AuctionDetailPage({
       }
     }
     if (!item) return;
+    if (!item.auction_id) {
+      setBidError("No auction_id found for this item");
+      return;
+    }
     if (!bidAmount || bidAmount < Math.ceil(item.start_price * 1.05)) {
       setBidError("Bid too low");
       return;
@@ -189,14 +242,14 @@ export default function AuctionDetailPage({
     setIsBidding(true);
     try {
       // 1. Get previous highest bidder and bid
-      const { highestBid, highestBidder } = await getAuctionOnChain(item.item_id);
+      const { highestBid, highestBidder } = await getAuctionOnChain(item.auction_id);
 
       // 2. Place bid on-chain
       const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, signer);
 
-      const tx = await contract.placeBid(item.item_id, {
+      const tx = await contract.placeBid(item.auction_id, {
         value: ethers.parseEther(bidAmount.toString()),
       });
       await tx.wait();
@@ -221,8 +274,8 @@ export default function AuctionDetailPage({
         .select("bid_id")
         .single();
       if (bidErr || !bidRow) throw bidErr;
-       // 5. Insert escrow transaction for new bid
-       await supabase.from("escrow_transactions").insert({
+      // 5. Insert escrow transaction for new bid
+      await supabase.from("escrow_transactions").insert({
         bid_id: bidRow.bid_id,
         item_id: item.item_id,
         tx_hash: tx.hash,
@@ -295,7 +348,7 @@ export default function AuctionDetailPage({
   const mins = Math.floor((diff % 3600000) / 60000);
   const timeLeft = `${days}d ${hours}h ${mins}m`;
   // const bidsCount = 0;
-  const watchersCount = 0;  
+  const watchersCount = 0;
   const isOwner = dbUserId && item && dbUserId === item.created_by;
 
   return (
@@ -434,21 +487,21 @@ export default function AuctionDetailPage({
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Badge className="bg-rose-100 text-rose-800">
-                  {item.category}
-                </Badge>
-                <Button
-                  variant={isWatching ? "destructive" : "outline"}
-                  onClick={toggleWatch}
-                >
-                  <Heart className="mr-2" />{" "}
-                  {isWatching ? "Unwatch" : "Watch"}
-                </Button>
-              </div>
+            {isOwner && item.status !== "ended" && (
+            <div className="space-y-2">
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={handleEndAuction}
+                disabled={isEnding}
+              >
+                {isEnding ? "Closing Auction..." : "Close Auction & Claim Funds"}
+              </Button>
+              {endError && <p className="text-sm text-rose-600">{endError}</p>}
+            </div>
+          )}
 
               <h1 className="text-2xl font-bold">{item.title}</h1>
-              
+
 
               <div className="space-y-2">
                 <div className="flex justify-between">
@@ -470,43 +523,43 @@ export default function AuctionDetailPage({
               <Separator />
 
               <div className="space-y-4">
-  <div className="flex flex-col">
-    <label htmlFor="bid-amount" className="text-sm">
-      Your Bid
-    </label>
-    <div className="relative">
-      <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-        Ξ
-      </span>
-      <Input
-        id="bid-amount"
-        type="number"
-        min={minBid}
-        className="pl-7"
-        value={bidAmount}
-        onChange={e => setBidAmount(Number(e.target.value))}
-        disabled={isBidding || !!isOwner}
-      />
-    </div>
-    {bidError && <p className="text-sm text-rose-600">{bidError}</p>}
-  </div>
-  <Button
-    className={`w-full ${isOwner ? "bg-green-600 hover:bg-green-700 cursor-not-allowed" : "bg-rose-600 hover:bg-rose-700"}`}
-    onClick={handleBid}
-    disabled={isBidding || !!isOwner}
-  >
-    {isOwner
-      ? "Can't bid. ITEM was listed by you"
-      : isBidding
-        ? "Placing Bid..."
-        : "Place Bid"}
-  </Button>
-  <div className="flex gap-2">
-    <Button variant="outline" className="flex-1">
-      <Share2 className="mr-2" /> Share
-    </Button>
-  </div>
-</div>
+                <div className="flex flex-col">
+                  <label htmlFor="bid-amount" className="text-sm">
+                    Your Bid
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                      Ξ
+                    </span>
+                    <Input
+                      id="bid-amount"
+                      type="number"
+                      min={minBid}
+                      className="pl-7"
+                      value={bidAmount}
+                      onChange={e => setBidAmount(Number(e.target.value))}
+                      disabled={isBidding || !!isOwner}
+                    />
+                  </div>
+                  {bidError && <p className="text-sm text-rose-600">{bidError}</p>}
+                </div>
+                <Button
+                  className={`w-full ${isOwner ? "bg-green-600 hover:bg-green-700 cursor-not-allowed" : "bg-rose-600 hover:bg-rose-700"}`}
+                  onClick={handleBid}
+                  disabled={isBidding || !!isOwner}
+                >
+                  {isOwner
+                    ? "Can't bid. ITEM was listed by you"
+                    : isBidding
+                      ? "Placing Bid..."
+                      : "Place Bid"}
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1">
+                    <Share2 className="mr-2" /> Share
+                  </Button>
+                </div>
+              </div>
 
             </CardContent>
           </Card>

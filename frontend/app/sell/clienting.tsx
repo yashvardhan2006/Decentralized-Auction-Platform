@@ -75,145 +75,121 @@ export default function SellPage() {
     setIsSubmitting(true)
     const supabase = createClientComponentClient()
 
-    // Supabase auth
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      console.error("Not logged in", authError)
-      setFormError(true)
-      setIsSubmitting(false)
-      return
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("users")
-      .select("user_id")
-      .eq("email", user.email)
-      .single()
-
-    if (profileError || !profile) {
-      console.error("Could not load profile", profileError)
-      setFormError(true)
-      setIsSubmitting(false)
-      return
-    }
-
-    // Collect form data
-    const fd = new FormData(formRef.current!)
-    const title        = fd.get("title")?.toString() || ""
-    const description  = fd.get("description")?.toString() || ""
-    const category     = fd.get("category")?.toString() || ""
-    const startPrice   = parseFloat(fd.get("starting-price")?.toString() || "0")
-    const reservePrice = fd.get("reserve-price") ? parseFloat(fd.get("reserve-price")!.toString()) : null
-    const buyNowPrice  = fd.get("buy-now") ? parseFloat(fd.get("buy-now")!.toString()) : null
-    const durationDays = parseInt(customDuration, 10)
-    const autoRelist   = fd.get("auto-renew") === "on"
- // 1️⃣ On-chain: create auction and wait for confirmation (user pays gas)
     try {
+      // 1️⃣ Authenticate & load profile
+      const { data: authData, error: authError } = await supabase.auth.getUser()
+      if (authError || !authData.user) throw new Error('Not authenticated')
+      const userEmail = authData.user.email
+
+      const { data: profile, error: profError } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('email', userEmail)
+        .single()
+      if (profError || !profile) throw new Error('Could not load user profile')
+      const createdBy = profile.user_id
+
+      // 2️⃣ On-chain: create auction
       const provider = new ethers.BrowserProvider((window as any).ethereum)
       const signer = await provider.getSigner()
-      const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, signer)
+      const contract = new ethers.Contract(
+        AUCTION_ADDRESS,
+        AUCTION_ABI,
+        signer
+      )
+
+      const fdMain = new FormData(formRef.current!)
+      const title = fdMain.get("title")?.toString() || ""
+      const startPrice = parseFloat(
+        fdMain.get("starting-price")?.toString() || "0"
+      )
 
       const tx = await contract.createAuction(
         title,
         ethers.parseEther(startPrice.toString())
       )
-
-      // Wait for user to confirm and for tx to be mined
       const receipt = await tx.wait()
-      console.log("Auction confirmed:", receipt.transactionHash)
-    } catch (err: any) {
-      // If user rejected
-      if (err.code === 4001) {
-        alert("Transaction was rejected.")
-      } else {
-        console.error("Transaction failed:", err)
-        alert("Transaction failed. Please try again.")
-      }
-      setIsSubmitting(false)
-      return
-    }
 
-    // 1️⃣ On-chain: create auction and wait for confirmation (user pays gas)
-    try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum)
-      const signer = await provider.getSigner()
-      const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, signer)
-      const tx = await contract.createAuction(
-        title,
-        ethers.parseEther(startPrice.toString())
-      )
-      const receipt = await tx.wait()
-      console.log("Auction tx hash:", receipt.transactionHash)
-    } catch (err) {
-      console.error("Smart contract interaction failed:", err)
-      setFormError(true)
-      setIsSubmitting(false)
-      return
-    }
+      const event = receipt.logs
+        .map(log => {
+          try { return contract.interface.parseLog(log) }
+          catch { return null }
+        })
+        .find(ev => ev?.name === "AuctionCreated")
+      if (!event) throw new Error("Could not get auction ID from contract event")
+      const auctionId = event.args.id.toString()
 
-    // 2️⃣ Supabase: insert item record
-    let itemId: number
-    try {
+      // 3️⃣ Supabase: insert item record
+      const description = fdMain.get("description")?.toString() || ""
+      const category = fdMain.get("category")?.toString() || ""
+      const reservePrice = fdMain.get("reserve-price")
+        ? parseFloat(fdMain.get("reserve-price")!.toString())
+        : null
+      const buyNowPrice = fdMain.get("buy-now")
+        ? parseFloat(fdMain.get("buy-now")!.toString())
+        : null
+      const durationDays = parseInt(customDuration, 10)
+      const autoRelist = fdMain.get("auto-renew") === "on"
+
       const now = new Date()
-      const end = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000)
-      const { data: insertedItem, error: insertError } = await supabase
+      const end = new Date(now.getTime() + durationDays * 86400_000)
+
+      const { data: newItem, error: insertError } = await supabase
         .from("items")
         .insert({
           title,
           description,
           category,
           condition: selectedCondition,
-          created_by: profile.user_id,
+          created_by: createdBy,
           start_price: startPrice,
-          reserve_price: reservePrice,
-          buy_now_price: buyNowPrice,
-          duration_days: durationDays,
+          // reserve_price: reservePrice,
+          // buy_now_price: buyNowPrice,
+          // duration_days: durationDays,
           auto_relist: autoRelist,
-          start_time: now.toISOString(),
-          end_time: end.toISOString(),
+          // start_time: now.toISOString(),
+          // end_time: end.toISOString(),
+          auction_id: auctionId,
         })
         .select("item_id")
         .single()
+      if (insertError || !newItem) throw insertError
+      const itemId = newItem.item_id
 
-      if (insertError || !insertedItem) throw insertError
-      itemId = insertedItem.item_id
-    } catch (err) {
-      console.error("Item insert failed:", err)
-      setFormError(true)
-      setIsSubmitting(false)
-      return
-    }
-
-    // 3️⃣ Supabase: upload images and insert metadata
-    try {
+      // 4️⃣ Supabase: upload images & metadata
       const uploadPromises = files.map((file, idx) => {
-        const filePath = `items/${itemId}/${Date.now()}-${file.name}`
+        const path = `items/${itemId}/${Date.now()}-${file.name}`
         return supabase.storage
           .from("image")
-          .upload(filePath, file, { cacheControl: "3600", upsert: false })
+          .upload(path, file, { cacheControl: "3600", upsert: false })
           .then(({ data, error }) => {
             if (error) throw error
-            const { data: urlData } = supabase.storage.from("image").getPublicUrl(data.path)
-            return { idx, path: data.path, publicUrl: urlData.publicUrl }
+            const { data: urlData } = supabase.storage
+              .from("image")
+              .getPublicUrl(data.path)
+            return { idx, url: urlData.publicUrl }
           })
       })
-
       const uploaded = await Promise.all(uploadPromises)
-      const imageInserts = uploaded.map(({ idx, path, publicUrl }) => ({
+      const metadata = uploaded.map(({ idx, url }) => ({
         item_id: itemId,
-        ipfs_hash: publicUrl,
+        ipfs_hash: url,
         is_primary: idx === 0,
         position: idx + 1,
       }))
-
-      const { error: imagesError } = await supabase.from("item_images").insert(imageInserts)
+      const { error: imagesError } = await supabase
+        .from("item_images")
+        .insert(metadata)
       if (imagesError) throw imagesError
 
-      // Success: redirect
+      // Redirect
       router.replace("/dashboard")
-    } catch (err) {
-      console.error("Image upload or metadata insert failed:", err)
+
+    } catch (err: any) {
+      console.error("Error creating listing:", err)
+      alert(err.message || "Transaction or upload failed. Please try again.")
       setFormError(true)
+
     } finally {
       setIsSubmitting(false)
     }

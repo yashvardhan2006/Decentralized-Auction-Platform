@@ -26,8 +26,8 @@ type AuctionRow = {
   title: string;
   category: string;
   start_price: number;
-  start_time: string;
-  end_time: string;
+  // start_time: string;
+  // end_time: string;
   item_images: { ipfs_hash: string; is_primary: boolean }[];
 };
 
