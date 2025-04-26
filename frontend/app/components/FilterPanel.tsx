@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Plus, Minus } from "lucide-react"
 
-const categories = ["Art", "Collectibles", "Electronics", "Fashion", "Jewelry", "Vehicles", "Other"]
+const categories = ["Art", "Collectibles", "Electronics", "Fashion", "jewelry", "Vehicles", "Other"]
 const priceRanges = [
   { min: 0, max: 100, label: "Under $100" },
   { min: 100, max: 500, label: "$100 - $500" },

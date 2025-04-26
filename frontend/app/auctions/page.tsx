@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, Search, SlidersHorizontal } from "lucide-react";
+import { Clock, Search, SlidersHorizontal, ArrowUp } from "lucide-react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 import FilterPanel from "@/app/components/FilterPanel";
@@ -41,14 +41,16 @@ type AuctionDisplay = {
   bids: number;
   category: string;
 };
+type PriceRange = { min: number; max: number | null };
 
 export default function AuctionsPage() {
   const supabase = createClientComponentClient();
   const [auctions, setAuctions] = useState<AuctionDisplay[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [filters, setFilters] = useState<{ categories: string[] }>({
+  const [filters, setFilters] = useState<{ categories: string[]; priceRanges: PriceRange[] }>({
     categories: [],
+    priceRanges: [],
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -58,7 +60,6 @@ export default function AuctionsPage() {
     async function loadAuctions() {
       setLoading(true);
 
-      // 1. Load items
       const { data: items, error: itemsError } = await supabase
         .from<AuctionRow>("items")
         .select(
@@ -71,15 +72,12 @@ export default function AuctionsPage() {
       }
 
       const now = Date.now();
-
-      // 2. Load all bids for these items
       const ids = items.map((row) => row.item_id);
       const { data: bidsData } = await supabase
         .from("bids")
         .select("item_id, amount")
         .in("item_id", ids);
 
-      // 3. Group and sort bids by item
       const bidMap: Record<number, number[]> = {};
       bidsData?.forEach((b: any) => {
         if (!bidMap[b.item_id]) bidMap[b.item_id] = [];
@@ -87,9 +85,7 @@ export default function AuctionsPage() {
       });
       Object.values(bidMap).forEach((arr) => arr.sort((a, b) => b - a));
 
-      // 4. Map to display objects
       const mapped: AuctionDisplay[] = items.map((row) => {
-        // pick image
         const chosen = row.item_images.find((i) => i.is_primary) || row.item_images[0] || null;
         let imageUrl = "/placeholder.svg";
         if (chosen) {
@@ -101,13 +97,11 @@ export default function AuctionsPage() {
           }
         }
 
-        // compute bids info
         const amounts = bidMap[row.item_id] || [];
         const current = amounts.length > 0 ? amounts[0] : row.start_price;
         const last = amounts.length > 1 ? amounts[1] : row.start_price;
         const count = amounts.length;
 
-        // compute time left
         const endMs = new Date(row.end_time).getTime();
         const diff = Math.max(endMs - now, 0);
         const days = Math.floor(diff / 86_400_000);
@@ -133,15 +127,31 @@ export default function AuctionsPage() {
     loadAuctions();
   }, [supabase]);
 
-  // filter & search
+  // Filter & search with categories and price
   const filteredAuctions = useMemo(() => {
     return auctions.filter((a) => {
       const matchesCategory =
-        filters.categories.length === 0 || filters.categories.includes(a.category);
-      const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
+        filters.categories.length === 0 ||
+        filters.categories.some(
+          cat => cat.toLowerCase() === a.category.toLowerCase()
+        );
+
+      const matchesPrice =
+        filters.priceRanges.length === 0 ||
+        filters.priceRanges.some(({ min, max }) => {
+          const bid = a.currentBid;
+          return bid >= min && (max === null || bid <= max);
+        });
+
+      const matchesSearch = a.title
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+
+      return matchesCategory && matchesPrice && matchesSearch;
     });
   }, [auctions, filters, searchQuery]);
+
+
 
   // pagination
   const paginatedAuctions = useMemo(() => {
@@ -231,9 +241,9 @@ export default function AuctionsPage() {
             {/* Auction Grid */}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {paginatedAuctions.map((auction) => (
-                <Card key={auction.id} className="overflow-hidden">
-                  <CardHeader className="p-0">
-                    <div className="relative h-48 w-full">
+                <Card key={auction.id} className="overflow-hidden p-0 w-full">
+                  <div className="h-80 w-full">
+                    <div className="relative h-full w-full">
                       <Image
                         src={auction.image}
                         alt={auction.title}
@@ -241,7 +251,7 @@ export default function AuctionsPage() {
                         className="object-cover"
                       />
                     </div>
-                  </CardHeader>
+                  </div>
                   <CardContent className="p-4">
                     <Badge className="mb-2 bg-rose-100 text-rose-800 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/30">
                       {auction.category}
@@ -255,9 +265,16 @@ export default function AuctionsPage() {
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           Last Bid
                         </p>
-                        <p className="text-sm line-through">
-                          ${auction.lastBid}
+                        <p className="text-sm flex items-center">
+                          <span className="line-through">${auction.lastBid}</span>
+                          {auction.currentBid > auction.lastBid && (
+                            <span className="ml-2 text-xs text-green-500 flex items-center">(<ArrowUp className="h-4 w-4 " />
+                              {(((auction.currentBid - auction.lastBid) / auction.lastBid) * 100
+                              ).toFixed(1)}%)
+                            </span>
+                          )}
                         </p>
+
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -269,18 +286,21 @@ export default function AuctionsPage() {
                       </div>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
-  {/* <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                      {/* <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
     <Clock className="mr-1 h-4 w-4" />
     {auction.timeLeft}
   </div> */}
-  <div className="text-sm text-gray-500 dark:text-gray-400">
-    Bids: <span className="font-semibold text-rose-600">{auction.bids}</span>
-  </div>
-</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Bids: <span className="font-semibold text-rose-600">{auction.bids}</span>
+                      </div>
+                    </div>
                   </CardContent>
                   <CardFooter className="p-4 pt-0">
-                    <Link href={`/auctions/${auction.id}`} passHref>
-                      <Button className="w-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
+                    <Link href={`/auctions/${auction.id}`} className="w-full" passHref>
+                      <Button
+                        className="w-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600
+                                     dark:hover:bg-rose-700 transition-transform hover:scale-105"
+                      >
                         Bid Now
                       </Button>
                     </Link>

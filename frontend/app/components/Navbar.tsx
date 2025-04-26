@@ -107,14 +107,7 @@ export default function Navbar() {
 
         {/* Right Side */}
         <div className="flex items-center space-x-4 ml-auto">
-          <Button variant="ghost" size="icon" className="hover:text-rose-600">
-            <Bell className="h-6 w-6" />
-          </Button>
-          <Button variant="ghost" size="icon" className="hover:text-rose-600">
-            <Heart className="h-6 w-6" />
-          </Button>
-
-          <ModeToggle />
+          
 
           {/* Wallet Connect */}
           <Button
