@@ -1,5 +1,8 @@
 // app/auctions/[id]/page.tsx
 "use client";
+import { ethers } from "ethers";
+import { AUCTION_ABI, AUCTION_ADDRESS } from "@/app/lib/auction";
+import { useWallet } from "@/app/hooks/useWallet"
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -65,6 +68,10 @@ export default function AuctionDetailPage({
 
   const [isWatching, setIsWatching] = useState(false);
   const [dbUserId, setDbUserId] = useState<number | null>(null);
+  const [bidAmount, setBidAmount] = useState<number>(0);
+  const [isBidding, setIsBidding] = useState(false);
+  const [bidError, setBidError] = useState<string | null>(null);
+  const { account, installed, connectAndSave } = useWallet ? useWallet() : { account: null, installed: false, connectAndSave: async () => {} };
 
   useEffect(() => {
     async function load() {
@@ -136,7 +143,109 @@ export default function AuctionDetailPage({
     }
     load();
   }, [params.id, supabase]);
+  async function getAuctionOnChain(itemId: number) {
+    const provider = new ethers.BrowserProvider((window as any).ethereum);
+    const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, provider);
+    const auction = await contract.auctions(itemId);
+    return {
+      highestBid: Number(ethers.formatEther(auction.highestBid)),
+      highestBidder: auction.highestBidder,
+    };
+  }
+  async function handleBid() {
+    setBidError(null);
+    if (!installed) {
+      setBidError("Please install MetaMask");
+      return;
+    }
+    if (!account) {
+      await connectAndSave?.();
+      if (!account) {
+        setBidError("Wallet not connected");
+        return;
+      }
+    }
+    if (!item) return;
+    if (!bidAmount || bidAmount < Math.ceil(item.start_price * 1.05)) {
+      setBidError("Bid too low");
+      return;
+    }
+    setIsBidding(true);
+    try {
+      // 1. Get previous highest bidder and bid
+      const { highestBid, highestBidder } = await getAuctionOnChain(item.item_id);
 
+      // 2. Place bid on-chain
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, signer);
+
+      const tx = await contract.placeBid(item.item_id, {
+        value: ethers.parseEther(bidAmount.toString()),
+      });
+      await tx.wait();
+
+      // 3. Get user_id from Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from("users")
+        .select("user_id")
+        .eq("email", user.email)
+        .single();
+
+      // 4. Insert bid in bids table
+      const { data: bidRow, error: bidErr } = await supabase
+        .from("bids")
+        .insert({
+          item_id: item.item_id,
+          bidder_id: profile.user_id,
+          amount: bidAmount,
+          bid_time: new Date().toISOString(),
+        })
+        .select("bid_id")
+        .single();
+      if (bidErr || !bidRow) throw bidErr;
+       // 5. Insert escrow transaction for new bid
+       await supabase.from("escrow_transactions").insert({
+        bid_id: bidRow.bid_id,
+        item_id: item.item_id,
+        tx_hash: tx.hash,
+        from_address: account,
+        to_address: AUCTION_ADDRESS,
+        amount: bidAmount,
+        tx_type: "bid",
+        tx_time: new Date().toISOString(),
+      });
+
+      // 6. If previous highestBidder exists and is not zero address, record refund
+      if (
+        highestBidder &&
+        highestBidder !== "0x0000000000000000000000000000000000000000" &&
+        highestBid > 0
+      ) {
+        // Record refund in escrow_transactions
+        await supabase.from("escrow_transactions").insert({
+          bid_id: null,
+          item_id: item.item_id,
+          tx_hash: tx.hash, // You may want to get the actual refund tx hash if available
+          from_address: AUCTION_ADDRESS,
+          to_address: highestBidder,
+          amount: highestBid,
+          tx_type: "refund",
+          tx_time: new Date().toISOString(),
+        });
+      }
+
+      alert("Bid placed!");
+      // Optionally reload bids/history here
+
+    } catch (err: any) {
+      setBidError(err?.message || "Bid failed");
+      console.error("Bid failed:", err);
+    } finally {
+      setIsBidding(false);
+    }
+  }
   const toggleWatch = async () => {
     if (!dbUserId || !item) return;
 
@@ -389,6 +498,33 @@ export default function AuctionDetailPage({
               </div>
             </CardContent>
           </Card>
+          <div className="flex flex-col">
+        <label htmlFor="bid-amount" className="text-sm">
+          Your Bid
+        </label>
+        <div className="relative">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+            Ξ
+          </span>
+          <Input
+            id="bid-amount"
+            type="number"
+            min={Math.ceil(item.start_price * 1.05)}
+            className="pl-7"
+            value={bidAmount}
+            onChange={e => setBidAmount(Number(e.target.value))}
+            disabled={isBidding}
+          />
+        </div>
+        {bidError && <p className="text-sm text-rose-600">{bidError}</p>}
+      </div>
+      <Button
+        className="w-full bg-rose-600 hover:bg-rose-700"
+        onClick={handleBid}
+        disabled={isBidding}
+      >
+        {isBidding ? "Placing Bid..." : "Place Bid"}
+      </Button>
 
           <div id="bid-history" className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center">
