@@ -31,18 +31,20 @@ type AuctionRow = {
   item_images: { ipfs_hash: string; is_primary: boolean }[];
 };
 
+type AuctionDisplay = {
+  id: number;
+  title: string;
+  image: string;
+  currentBid: number;
+  lastBid: number;
+  timeLeft: string;
+  bids: number;
+  category: string;
+};
 
 export default function AuctionsPage() {
   const supabase = createClientComponentClient();
-  const [auctions, setAuctions] = useState<{
-    id: number;
-    title: string;
-    image: string;
-    currentBid: number;
-    timeLeft: string;
-    bids: number;
-    category: string;
-  }[]>([]);
+  const [auctions, setAuctions] = useState<AuctionDisplay[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState<{ categories: string[] }>({
@@ -51,92 +53,92 @@ export default function AuctionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch items + images on mount
+  // Fetch items + images + bids on mount
   useEffect(() => {
     async function loadAuctions() {
       setLoading(true);
-  
-      const { data, error } = await supabase
+
+      // 1. Load items
+      const { data: items, error: itemsError } = await supabase
         .from<AuctionRow>("items")
-        .select(`
-          item_id,
-          title,
-          category,
-          start_price,
-          start_time,
-          end_time,
-          item_images (
-            ipfs_hash,
-            is_primary
-          )
-        `);
-  
-      if (error) {
-        console.error("Error loading items:", error);
+        .select(
+          `item_id, title, category, start_price, start_time, end_time, item_images(ipfs_hash, is_primary)`
+        );
+      if (itemsError || !items) {
+        console.error("Error loading items:", itemsError);
         setLoading(false);
         return;
       }
-  
+
       const now = Date.now();
-      const mapped = data!.map((row) => {
-        // Ensure we have an array
-        const imagesArray = row.item_images ?? [];
-  
-        // Pick the primary image or the first one
-        const chosen = imagesArray.find((i) => i.is_primary) || imagesArray[0] || null;
-  
-        // Resolve a valid URL
-        let imageUrl = "/placeholder.svg";  // local fallback
+
+      // 2. Load all bids for these items
+      const ids = items.map((row) => row.item_id);
+      const { data: bidsData } = await supabase
+        .from("bids")
+        .select("item_id, amount")
+        .in("item_id", ids);
+
+      // 3. Group and sort bids by item
+      const bidMap: Record<number, number[]> = {};
+      bidsData?.forEach((b: any) => {
+        if (!bidMap[b.item_id]) bidMap[b.item_id] = [];
+        bidMap[b.item_id].push(b.amount);
+      });
+      Object.values(bidMap).forEach((arr) => arr.sort((a, b) => b - a));
+
+      // 4. Map to display objects
+      const mapped: AuctionDisplay[] = items.map((row) => {
+        // pick image
+        const chosen = row.item_images.find((i) => i.is_primary) || row.item_images[0] || null;
+        let imageUrl = "/placeholder.svg";
         if (chosen) {
           const raw = chosen.ipfs_hash;
-          if (raw.startsWith("http")) {
-            // Already a public URL
-            imageUrl = raw;
-          } else {
-            // Build via Supabase storage
-            const { data: urlData } = supabase
-              .storage
-              .from("image")
-              .getPublicUrl(raw);
+          if (raw.startsWith("http")) imageUrl = raw;
+          else {
+            const { data: urlData } = supabase.storage.from("image").getPublicUrl(raw);
             imageUrl = urlData.publicUrl;
           }
         }
-  
-        // Compute time left
+
+        // compute bids info
+        const amounts = bidMap[row.item_id] || [];
+        const current = amounts.length > 0 ? amounts[0] : row.start_price;
+        const last = amounts.length > 1 ? amounts[1] : row.start_price;
+        const count = amounts.length;
+
+        // compute time left
         const endMs = new Date(row.end_time).getTime();
         const diff = Math.max(endMs - now, 0);
         const days = Math.floor(diff / 86_400_000);
         const hours = Math.floor((diff % 86_400_000) / 3_600_000);
         const timeLeft = `${days}d ${hours}h`;
-  
+
         return {
           id: row.item_id,
           title: row.title,
           image: imageUrl,
-          currentBid: Number(row.start_price),
+          currentBid: Number(current),
+          lastBid: Number(last),
           timeLeft,
-          bids: 0,          // replace with real bid count if available
+          bids: count,
           category: row.category,
         };
       });
-  
+
       setAuctions(mapped);
       setLoading(false);
     }
-  
+
     loadAuctions();
   }, [supabase]);
-  
 
   // filter & search
   const filteredAuctions = useMemo(() => {
     return auctions.filter((a) => {
       const matchesCategory =
-        filters.categories.length === 0 ||
-        filters.categories.includes(a.category);
-      const matchesSearch = a.title
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
+        filters.categories.length === 0 || filters.categories.includes(a.category);
+      const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });
   }, [auctions, filters, searchQuery]);
@@ -247,8 +249,17 @@ export default function AuctionsPage() {
                     <h3 className="font-semibold line-clamp-1">
                       {auction.title}
                     </h3>
+
                     <div className="mt-2 flex items-center justify-between">
                       <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Last Bid
+                        </p>
+                        <p className="text-sm line-through">
+                          ${auction.lastBid}
+                        </p>
+                      </div>
+                      <div className="text-right">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           Current Bid
                         </p>
@@ -256,17 +267,16 @@ export default function AuctionsPage() {
                           ${auction.currentBid}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Bids
-                        </p>
-                        <p className="font-semibold">{auction.bids}</p>
-                      </div>
                     </div>
-                    <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-                      <Clock className="mr-1 h-4 w-4" />
-                      {auction.timeLeft}
-                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+  {/* <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+    <Clock className="mr-1 h-4 w-4" />
+    {auction.timeLeft}
+  </div> */}
+  <div className="text-sm text-gray-500 dark:text-gray-400">
+    Bids: <span className="font-semibold text-rose-600">{auction.bids}</span>
+  </div>
+</div>
                   </CardContent>
                   <CardFooter className="p-4 pt-0">
                     <Link href={`/auctions/${auction.id}`} passHref>
