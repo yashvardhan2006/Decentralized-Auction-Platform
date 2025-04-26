@@ -1,4 +1,3 @@
-// app/auctions/[id]/page.tsx
 "use client";
 import { ethers } from "ethers";
 import { AUCTION_ABI, AUCTION_ADDRESS } from "@/app/lib/auction";
