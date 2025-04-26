@@ -1,8 +1,11 @@
-
+"use client"
 import MetaMaskOnboarding from "@metamask/onboarding"
 
 // The origin where your dApp is served (adjust if hosted elsewhere)
-const forwarderOrigin = window.location.origin || "http://localhost:3000"
+const forwarderOrigin =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : "http://localhost:3000";
 
 export const isMetaMaskInstalled = (): boolean => {
   return (

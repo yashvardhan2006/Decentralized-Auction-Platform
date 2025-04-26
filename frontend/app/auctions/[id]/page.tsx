@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import { AUCTION_ABI, AUCTION_ADDRESS } from "@/app/lib/auction";
 import { useWallet } from "@/app/hooks/useWallet"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -60,7 +60,9 @@ export default function AuctionDetailPage({
   params: { id: string };
 }) {
   const supabase = createClientComponentClient();
-
+  const [bids, setBids] = useState<{ username: string; amount: number }[]>([]);
+  const [bidsCount, setBidsCount] = useState(0);
+  const [maxBid, setMaxBid] = useState<number>(0);
   const [item, setItem] = useState<ItemRow | null>(null);
   const [primaryUrl, setPrimaryUrl] = useState<string>("/placeholder.svg");
   const [thumbnails, setThumbnails] = useState<string[]>([]);
@@ -73,6 +75,21 @@ export default function AuctionDetailPage({
   const [bidError, setBidError] = useState<string | null>(null);
   const { account, installed, connectAndSave } = useWallet ? useWallet() : { account: null, installed: false, connectAndSave: async () => {} };
 
+  async function fetchBids() {
+    const { data, error } = await supabase
+      .from("bids")
+      .select("amount, bid_time, users:bidder_id(username)")
+      .eq("item_id", Number(params.id))
+      .order("bid_time", { ascending: false });
+    if (!error && data) {
+      setBids(data.map((b: any) => ({
+        username: b.users?.username || "Unknown",
+        amount: b.amount,
+      })));
+      setBidsCount(data.length);
+      setMaxBid(data.length > 0 ? data[0].amount : item?.start_price || 0);
+    }
+  }
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -143,6 +160,12 @@ export default function AuctionDetailPage({
     }
     load();
   }, [params.id, supabase]);
+  useEffect(() => {
+    fetchBids();
+    const interval = setInterval(fetchBids, 5000);
+    return () => clearInterval(interval);
+  }, [params.id, supabase]);
+  const minBid = maxBid > 0 ? Math.ceil(maxBid + 1) : Math.ceil(item?.start_price * 1.05);
   async function getAuctionOnChain(itemId: number) {
     const provider = new ethers.BrowserProvider((window as any).ethereum);
     const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, provider);
@@ -278,8 +301,9 @@ export default function AuctionDetailPage({
   const hours = Math.floor((diff % 86400000) / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
   const timeLeft = `${days}d ${hours}h ${mins}m`;
-  const bidsCount = 0;
-  const watchersCount = 0;
+  // const bidsCount = 0;
+  const watchersCount = 0;  
+  const isOwner = dbUserId && item && dbUserId === item.created_by;
 
   return (
     <div className="container px-4 py-8 md:px-6 md:py-12">
@@ -431,100 +455,69 @@ export default function AuctionDetailPage({
               </div>
 
               <h1 className="text-2xl font-bold">{item.title}</h1>
-              <div className="flex items-center text-sm text-gray-500">
-                <Eye className="mr-1" /> {watchersCount} watching
-              </div>
+              
 
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Current Bid:</span>
                   <span className="font-bold text-rose-600">
-                    ${item.start_price}
+                    ${maxBid}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Next Min Bid:</span>
-                  <span>${Math.ceil(item.start_price * 1.05)}</span>
+                  <span>${minBid}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Bids:</span>
-                  <Link
-                    href="#bid-history"
-                    className="text-rose-600 hover:underline"
-                  >
-                    {bidsCount} bids
-                  </Link>
+                  <span className="text-rose-600">{bidsCount} bids</span>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Time Left:</span>
-                  <span className="text-rose-600">{timeLeft}</span>
-                </div>
-                <Progress
-                  value={(days / item.duration_days) * 100}
-                  className="h-2"
-                />
               </div>
 
               <Separator />
 
               <div className="space-y-4">
-                <div className="flex flex-col">
-                  <label htmlFor="bid-amount" className="text-sm">
-                    Your Bid
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                      Ξ
-                    </span>
-                    <Input
-                      id="bid-amount"
-                      type="number"
-                      min={Math.ceil(item.start_price * 1.05)}
-                      className="pl-7"
-                    />
-                  </div>
-                </div>
-                <Button className="w-full bg-rose-600 hover:bg-rose-700">
-                  Place Bid
-                </Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1">
-                    <Share2 className="mr-2" /> Share
-                  </Button>
-                </div>
-              </div>
+  <div className="flex flex-col">
+    <label htmlFor="bid-amount" className="text-sm">
+      Your Bid
+    </label>
+    <div className="relative">
+      <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+        Ξ
+      </span>
+      <Input
+        id="bid-amount"
+        type="number"
+        min={minBid}
+        className="pl-7"
+        value={bidAmount}
+        onChange={e => setBidAmount(Number(e.target.value))}
+        disabled={isBidding || !!isOwner}
+      />
+    </div>
+    {bidError && <p className="text-sm text-rose-600">{bidError}</p>}
+  </div>
+  <Button
+    className={`w-full ${isOwner ? "bg-green-600 hover:bg-green-700 cursor-not-allowed" : "bg-rose-600 hover:bg-rose-700"}`}
+    onClick={handleBid}
+    disabled={isBidding || !!isOwner}
+  >
+    {isOwner
+      ? "Can't bid. ITEM was listed by you"
+      : isBidding
+        ? "Placing Bid..."
+        : "Place Bid"}
+  </Button>
+  <div className="flex gap-2">
+    <Button variant="outline" className="flex-1">
+      <Share2 className="mr-2" /> Share
+    </Button>
+  </div>
+</div>
+
             </CardContent>
           </Card>
-          <div className="flex flex-col">
-        <label htmlFor="bid-amount" className="text-sm">
-          Your Bid
-        </label>
-        <div className="relative">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-            Ξ
-          </span>
-          <Input
-            id="bid-amount"
-            type="number"
-            min={Math.ceil(item.start_price * 1.05)}
-            className="pl-7"
-            value={bidAmount}
-            onChange={e => setBidAmount(Number(e.target.value))}
-            disabled={isBidding}
-          />
-        </div>
-        {bidError && <p className="text-sm text-rose-600">{bidError}</p>}
-      </div>
-      <Button
-        className="w-full bg-rose-600 hover:bg-rose-700"
-        onClick={handleBid}
-        disabled={isBidding}
-      >
-        {isBidding ? "Placing Bid..." : "Place Bid"}
-      </Button>
+
 
           <div id="bid-history" className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center">
@@ -532,7 +525,24 @@ export default function AuctionDetailPage({
             </h3>
             <Card>
               <CardContent>
-                <p className="text-sm text-gray-500">No bids yet.</p>
+                {bids.length === 0 ? (
+                  <p className="text-sm text-gray-500">No bids yet.</p>
+                ) : (
+                  <ul className="divide-y">
+                    {bids.map((b, i) => (
+                      <li
+                        key={i}
+                        className={`flex justify-between py-2 ${i === 0 ? "text-rose-600 font-bold" : ""}`}
+                      >
+                        <span>{b.username}</span>
+                        <span>
+                          ${b.amount}
+                          {i === 0 && <span className="ml-2 text-xs">(Highest)</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </CardContent>
             </Card>
           </div>
