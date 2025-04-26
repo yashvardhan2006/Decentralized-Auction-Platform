@@ -99,7 +99,7 @@ export default function Navbar() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex space-x-10 text-[16px] font-medium ml-10">
           <Link href="/auctions" className="hover:text-rose-600 transition">Browse Auctions</Link>
-          <Link href="/categories" className="hover:text-rose-600 transition">Categories</Link>
+          {/* <Link href="/categories" className="hover:text-rose-600 transition">Categories</Link> */}
           <Link href="/sell" className="hover:text-rose-600 transition">Sell an Item</Link>
           <Link href="/how-it-works" className="hover:text-rose-600 transition">How It Works</Link>
           <Link href="/faqs" className="hover:text-rose-600 transition">FAQs</Link>
@@ -107,14 +107,7 @@ export default function Navbar() {
 
         {/* Right Side */}
         <div className="flex items-center space-x-4 ml-auto">
-          <Button variant="ghost" size="icon" className="hover:text-rose-600">
-            <Bell className="h-6 w-6" />
-          </Button>
-          <Button variant="ghost" size="icon" className="hover:text-rose-600">
-            <Heart className="h-6 w-6" />
-          </Button>
-
-          <ModeToggle />
+          
 
           {/* Wallet Connect */}
           <Button

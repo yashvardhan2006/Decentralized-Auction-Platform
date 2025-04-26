@@ -46,7 +46,7 @@ export default function Home() {
         </Link>
       )} */}
 
-      <AuthButtons/>
+      
               </div>
               </div>
 <div className="-z-1 absolute w-[100vw] h-[180vh] -left-10 top-[20vh] scale-[3.25] overflow-hidden">
@@ -58,40 +58,19 @@ export default function Home() {
             {/* </div> */}
             <div className="flex items-center justify-center z-2 relative">
               <div className="relative h-[350px] w-[350px] sm:h-[400px] sm:w-[400px] lg:h-[500px] lg:w-[500px]">
-                <Image
+                {/* <Image
                   src="/placeholder.svg?height=500&width=500"
                   alt="Auction Items Collage"
                   fill
                   className="object-cover rounded-full"
                   priority
-                />
+                /> */}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Search Section */}
-      <section className="py-12 bg-white dark:bg-gray-950 ">
-        <div className=" px-4 md:px-6">
-          <div className="mx-auto max-w-3xl space-y-4">
-            <h2 className="text-center text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-              Find Your Next Treasure
-            </h2>
-            <div className="flex w-full max-w-lg mx-auto items-center space-x-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                <Input
-                  type="search"
-                  placeholder="Search auctions..."
-                  className="w-full bg-white pl-8 dark:bg-gray-950"
-                />
-              </div>
-              <Button className="bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">Search</Button>
-            </div>
-          </div>
-        </div>
-      </section>
       <ActionsSection />
       {/* Decentralized Features */}
       
