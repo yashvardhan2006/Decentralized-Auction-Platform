@@ -31,7 +31,6 @@ type AuctionRow = {
   item_images: { ipfs_hash: string; is_primary: boolean }[];
 };
 
-
 export default function AuctionsPage() {
   const supabase = createClientComponentClient();
   const [auctions, setAuctions] = useState<{
@@ -157,7 +156,7 @@ export default function AuctionsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-950 to-[#2C1352]">
       <div className="container px-4 py-8 md:px-6 md:py-12">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">

@@ -15,7 +15,7 @@ export default function HowItWorksPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-rose-50 to-white py-20 dark:from-gray-900 dark:to-gray-950">
+      {/* <section className="relative bg-gradient-to-b from-rose-50 to-white py-20 dark:from-gray-900 dark:to-gray-950">
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12">
             <div className="flex flex-col justify-center space-y-4">
@@ -29,14 +29,14 @@ export default function HowItWorksPage() {
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                {/* <Link href="/auctions" passHref>
+                 <Link href="/auctions" passHref>
                   <Button className="bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
                     Browse Auctions <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
                 <Link href="/auth/register" passHref>
                   <Button variant="outline">Create Account</Button>
-                </Link> */}
+                </Link> 
               </div>
             </div>
             <div className="flex items-center justify-center">
@@ -52,7 +52,7 @@ export default function HowItWorksPage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Step by Step Process */}
       <section className="py-12 bg-white dark:bg-gray-950">
@@ -68,10 +68,10 @@ export default function HowItWorksPage() {
 
           <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             <Card className="relative overflow-hidden">
-              <div className="absolute top-0 left-0 h-1 w-full bg-rose-600"></div>
+              <div className="absolute top-0 left-0 h-1 w-full bg-[#2B144D]"></div>
               <CardHeader className="pb-2">
-                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                  <UserPlus className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[#4e248a]">
+                  <UserPlus className="h-6 w-6 text-purple-300" />
                 </div>
                 <CardTitle className="text-xl">1. Create an Account</CardTitle>
                 <CardDescription>
@@ -97,10 +97,10 @@ export default function HowItWorksPage() {
             </Card>
 
             <Card className="relative overflow-hidden">
-              <div className="absolute top-0 left-0 h-1 w-full bg-rose-600"></div>
+              <div className="absolute top-0 left-0 h-1 w-full bg-[#2B144D]"></div>
               <CardHeader className="pb-2">
-                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                  <Search className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[#4e248a]">
+                  <Search className="h-6 w-6 text-purple-300" />
                 </div>
                 <CardTitle className="text-xl">2. Find Items</CardTitle>
                 <CardDescription>Browse categories or search for specific items you're interested in.</CardDescription>
@@ -124,10 +124,10 @@ export default function HowItWorksPage() {
             </Card>
 
             <Card className="relative overflow-hidden">
-              <div className="absolute top-0 left-0 h-1 w-full bg-rose-600"></div>
+              <div className="absolute top-0 left-0 h-1 w-full bg-[#2B144D]"></div>
               <CardHeader className="pb-2">
-                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                  <Gavel className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[#4e248a]">
+                  <Gavel className="h-6 w-6 text-purple-300" />
                 </div>
                 <CardTitle className="text-xl">3. Place Bids</CardTitle>
                 <CardDescription>Set your maximum bid and let our system automatically bid for you.</CardDescription>
@@ -151,10 +151,10 @@ export default function HowItWorksPage() {
             </Card>
 
             <Card className="relative overflow-hidden">
-              <div className="absolute top-0 left-0 h-1 w-full bg-rose-600"></div>
+              <div className="absolute top-0 left-0 h-1 w-full bg-[#2B144D]"></div>
               <CardHeader className="pb-2">
-                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                  <Package className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[#4e248a]">
+                  <Package className="h-6 w-6 text-purple-300" />
                 </div>
                 <CardTitle className="text-xl">4. Win & Receive</CardTitle>
                 <CardDescription>Pay securely and receive your item directly from the seller.</CardDescription>
@@ -201,8 +201,8 @@ export default function HowItWorksPage() {
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
                   <CardHeader>
-                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                      <Shield className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#4e248a] ">
+                      <Shield className="h-5 w-5 text-purple-200" />
                     </div>
                     <CardTitle>Buyer Protection</CardTitle>
                     <CardDescription>Shop with confidence knowing you're protected.</CardDescription>
@@ -217,8 +217,8 @@ export default function HowItWorksPage() {
 
                 <Card>
                   <CardHeader>
-                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                      <Star className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#4e248a]">
+                      <Star className="h-5 w-5 text-purple-200" />
                     </div>
                     <CardTitle>Verified Sellers</CardTitle>
                     <CardDescription>Buy from trusted and rated community members.</CardDescription>
@@ -233,8 +233,8 @@ export default function HowItWorksPage() {
 
                 <Card>
                   <CardHeader>
-                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                      <CreditCard className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#4e248a]">
+                      <CreditCard className="h-5 w-5 text-purple-200" />
                     </div>
                     <CardTitle>Secure Payments</CardTitle>
                     <CardDescription>Multiple payment options with secure processing.</CardDescription>
@@ -252,8 +252,8 @@ export default function HowItWorksPage() {
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
                   <CardHeader>
-                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                      <Gavel className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#4e248a]">
+                      <Gavel className="h-5 w-5 text-purple-200" />
                     </div>
                     <CardTitle>Global Reach</CardTitle>
                     <CardDescription>Connect with buyers from around the world.</CardDescription>
@@ -268,8 +268,8 @@ export default function HowItWorksPage() {
 
                 <Card>
                   <CardHeader>
-                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                      <Truck className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#4e248a]">
+                      <Truck className="h-5 w-5 text-purple-200" />
                     </div>
                     <CardTitle>Shipping Tools</CardTitle>
                     <CardDescription>Simplified shipping and logistics management.</CardDescription>
@@ -284,8 +284,8 @@ export default function HowItWorksPage() {
 
                 <Card>
                   <CardHeader>
-                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                      <MessageSquare className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#4e248a]">
+                      <MessageSquare className="h-5 w-5 text-purple-200" />
                     </div>
                     <CardTitle>Seller Support</CardTitle>
                     <CardDescription>Dedicated assistance for all your selling needs.</CardDescription>
@@ -375,7 +375,7 @@ export default function HowItWorksPage() {
           <div className="mt-8 text-center">
             <p className="mb-4 text-muted-foreground">Still have questions? Our support team is here to help.</p>
             <Link href="/contact" passHref>
-              <Button className="bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
+              <Button className="bg-purple-600 hover:bg-purple-500  ">
                 <HelpCircle className="mr-2 h-4 w-4" />
                 Contact Support
               </Button>
@@ -385,7 +385,7 @@ export default function HowItWorksPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-rose-600 py-12 text-white dark:bg-rose-900">
+      <section className="bg-gradient-to-r from-[#1f1247] to-purple-900 py-12 text-white ">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
