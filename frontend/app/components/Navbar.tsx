@@ -49,11 +49,11 @@ export default function Navbar() {
               </Link>
 
               <nav className="flex flex-col gap-3 text-lg">
-                <Link href="/auctions" className="hover:text-rose-600 transition">Browse Auctions</Link>
-                <Link href="/categories" className="hover:text-rose-600 transition">Categories</Link>
-                <Link href="/sell" className="hover:text-rose-600 transition">Sell an Item</Link>
-                <Link href="/how-it-works" className="hover:text-rose-600 transition">How It Works</Link>
-                <Link href="/faqs" className="hover:text-rose-600 transition">FAQs</Link>
+                <Link href="/auctions" className="hover:text-purple-600 transition">Browse Auctions</Link>
+                <Link href="/categories" className="hover:text-purple-600 transition">Categories</Link>
+                <Link href="/sell" className="hover:text-purple-600 transition">Sell an Item</Link>
+                <Link href="/how-it-works" className="hover:text-purple-600 transition">How It Works</Link>
+                <Link href="/faqs" className="hover:text-purple-600 transition">FAQs</Link>
               </nav>
 
               <div className="border-t pt-4 mt-6 flex flex-col gap-3">

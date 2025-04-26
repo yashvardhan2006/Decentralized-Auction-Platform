@@ -1,12 +1,16 @@
-import * as React from "react"
-import * as AccordionPrimitive from "@radix-ui/react-accordion"
-import { ChevronDown } from "lucide-react"
+// app/components/Accordion.tsx
+"use client";
 
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import * as AccordionPrimitive from "@radix-ui/react-accordion";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const Accordion = AccordionPrimitive.Root
+// The root Accordion
+export const Accordion = AccordionPrimitive.Root;
 
-const AccordionItem = React.forwardRef<
+// A single Accordion item
+export const AccordionItem = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
 >(({ className, ...props }, ref) => (
@@ -18,10 +22,11 @@ const AccordionItem = React.forwardRef<
     )}
     {...props}
   />
-))
-AccordionItem.displayName = AccordionPrimitive.Item.displayName
+));
+AccordionItem.displayName = AccordionPrimitive.Item.displayName;
 
-const AccordionTrigger = React.forwardRef<
+// The Trigger that shows the header + chevron
+export const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
 >(({ className, children, ...props }, ref) => (
@@ -29,19 +34,27 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline",
+        // make this a “group” so child variants can pick up data-state
+        "group flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline",
         className
       )}
       {...props}
     >
       {children}
-      <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+      <ChevronDown
+        className={cn(
+          "h-4 w-4 transition-transform duration-200",
+          // rotate when parent (group) has data-state="open"
+          "group-data-[state=open]:rotate-180"
+        )}
+      />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
-))
-AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
+));
+AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName;
 
-const AccordionContent = React.forwardRef<
+// The collapsible content area
+export const AccordionContent = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
@@ -55,7 +68,5 @@ const AccordionContent = React.forwardRef<
   >
     <div className="pt-0 pb-4">{children}</div>
   </AccordionPrimitive.Content>
-))
-AccordionContent.displayName = AccordionPrimitive.Content.displayName
-
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
+));
+AccordionContent.displayName = AccordionPrimitive.Content.displayName;

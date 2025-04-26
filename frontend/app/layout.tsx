@@ -120,7 +120,7 @@ export default function RootLayout({
                     </p>
                     <form className="space-y-2">
                       <Input type="email" placeholder="Your email" className="w-full" />
-                      <Button className="w-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700">
+                      <Button className="w-full bg-purple-600 hover:bg-purple-500">
                         Subscribe
                       </Button>
                     </form>

@@ -161,38 +161,22 @@ export default function FeaturedAuctions() {
                                hover:scale-105 hover:shadow-2xl cursor-pointer"
                   >
                     <CardHeader className="p-0">
-                      <div className="relative h-48 w-full">
+                      <div className="relative h-60 w-full">
                         <Image
                           src={auction.image}
                           alt={auction.title}
                           fill
-                          className="object-cover"
+                          className="w-full h-[400px] object-cover transition-transform duration-500 group-hover:scale-105"
                         />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-3 top-3 h-8 w-8 rounded-full
-                                     bg-white/80 backdrop-blur-sm dark:bg-gray-800/80
-                                     transition-colors hover:bg-white/100 dark:hover:bg-gray-800/90"
-                          onClick={() => toggleFavorite(auction.id)}
-                        >
-                          <Heart
-                            className={`h-4 w-4 ${favorites.includes(auction.id)
-                              ? "fill-rose-500 text-rose-500"
-                              : "text-gray-500 dark:text-gray-400"
-                              }`}
-                          />
-                          <span className="sr-only">Toggle favorite</span>
-                        </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-4">
+                    <CardContent className="px-4 ">
                       <Badge className="mb-2 inline-block transform transition
                                          hover:scale-110 bg-rose-100 text-rose-800
                                          dark:bg-rose-900/30 dark:text-rose-300">
                         {auction.category}
                       </Badge>
-                      <h3 className="mt-2 font-semibold text-lg line-clamp-1">
+                      <h3 className="text-sm font-medium text-white mb-1 line-clamp-2">
                         {auction.title}
                       </h3>
                       <div className="mt-3 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
@@ -205,13 +189,13 @@ export default function FeaturedAuctions() {
                           <p className="font-semibold">{auction.bids}</p>
                         </div>
                       </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                      {/* <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
                         <Clock className="mr-1 h-4 w-4" />
                         {auction.timeLeft}
-                      </div>
+                      </div> */}
                     </CardContent>
-                    <CardFooter className="p-4 pt-0">
-                      <Link href={`/auctions/${auction.id}`} passHref>
+                    <CardFooter className="p-2 w-full flex justify-center pt-0">
+                      <Link href={`/auctions/${auction.id}`} passHref className="w-full">
                         <Button
                           className="w-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600
                                      dark:hover:bg-rose-700 transition-transform hover:scale-105"

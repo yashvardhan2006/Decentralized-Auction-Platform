@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, User } from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
+import { WavyBackground } from "../../../components/ui/wavy-background";
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -78,8 +80,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center px-4">
-      <Card className="w-full max-w-md mx-4 sm:mx-0 backdrop-blur-sm bg-white/80 dark:bg-gray-900/80 shadow-xl rounded-2xl">
+    <WavyBackground className="max-full mx-auto pb-40">
+    <div className="flex mt-10 h-screen w-screen items-center justify-center px-4">
+      <Card className="w-full max-w-md mx-4 sm:mx-0 backdrop-blur-sm bg-transparent/50 bg-gradient-to-b from-gray-850 to-[#2C1352] shadow-xl rounded-2xl">
         <CardHeader className="pt-10 pb-4 text-center">
           <User className="mx-auto mb-4 h-10 w-10 text-rose-500 animate-bounce" />
           <h1 className="text-3xl font-bold">Welcome Back</h1>
@@ -179,5 +182,7 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  </WavyBackground>
+    
   )
 }
