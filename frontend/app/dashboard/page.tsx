@@ -72,10 +72,10 @@ export default function DashboardPage() {
       if (uniqueBidItemIds.length) {
         const { data: items } = await supabase
           .from("items")
-          .select("item_id, title, category, start_price, end_time")
+          .select("item_id, title, category, start_price, end_time, item_images(ipfs_hash, is_primary)")
           .in("item_id", uniqueBidItemIds)
-        // Get highest bid for each item
         for (const item of items || []) {
+          // Get highest bid for each item
           const { data: topBid } = await supabase
             .from("bids")
             .select("bidder_id, amount")
@@ -89,10 +89,23 @@ export default function DashboardPage() {
             .from("bids")
             .select("*", { count: "exact", head: true })
             .eq("item_id", item.item_id)
+
+          // Get image (same logic as auctions page)
+          let image = "/placeholder.svg"
+          const chosen = item.item_images?.find((i: any) => i.is_primary) || item.item_images?.[0]
+          if (chosen) {
+            const raw = chosen.ipfs_hash
+            if (raw && raw.startsWith("http")) image = raw
+            else if (raw) {
+              const { data: urlData } = supabase.storage.from("image").getPublicUrl(raw)
+              image = urlData.publicUrl
+            }
+          }
+
           active.push({
             id: item.item_id,
             title: item.title,
-            image: "/placeholder.svg",
+            image,
             currentBid: topBid?.amount ?? item.start_price,
             timeLeft: getTimeLeft(item.end_time),
             bids: count ?? 0,
@@ -102,16 +115,16 @@ export default function DashboardPage() {
       }
       setActiveAuctions(active)
 
-      // 3. Won auctions (user is highest bidder and auction ended)
+      // 3. Won auctions (user is highest bidder and auction CLOSED)
       const now = new Date()
       let won: any[] = []
       if (uniqueBidItemIds.length) {
-        const { data: endedItems } = await supabase
+        const { data: CLOSEDItems } = await supabase
           .from("items")
-          .select("item_id, title, end_time")
+          .select("item_id, title, end_time, item_images(ipfs_hash, is_primary)")
           .lt("end_time", now.toISOString())
           .in("item_id", uniqueBidItemIds)
-        for (const item of endedItems || []) {
+        for (const item of CLOSEDItems || []) {
           const { data: topBid } = await supabase
             .from("bids")
             .select("bidder_id, amount")
@@ -120,10 +133,21 @@ export default function DashboardPage() {
             .limit(1)
             .single()
           if (topBid?.bidder_id === userId) {
+            // Get image
+            let image = "/placeholder.svg"
+            const chosen = item.item_images?.find((i: any) => i.is_primary) || item.item_images?.[0]
+            if (chosen) {
+              const raw = chosen.ipfs_hash
+              if (raw && raw.startsWith("http")) image = raw
+              else if (raw) {
+                const { data: urlData } = supabase.storage.from("image").getPublicUrl(raw)
+                image = urlData.publicUrl
+              }
+            }
             won.push({
               id: item.item_id,
               title: item.title,
-              image: "/placeholder.svg",
+              image,
               finalPrice: topBid.amount,
               date: new Date(item.end_time).toLocaleDateString(),
               status: "Pending", // You can enhance this with payment/shipping info
@@ -143,17 +167,28 @@ export default function DashboardPage() {
         const ids = watchRows.map((w: any) => w.item_id)
         const { data: items } = await supabase
           .from("items")
-          .select("item_id, title, end_time, start_price")
+          .select("item_id, title, end_time, start_price, item_images(ipfs_hash, is_primary)")
           .in("item_id", ids)
         for (const item of items || []) {
           const { count } = await supabase
             .from("bids")
             .select("*", { count: "exact", head: true })
             .eq("item_id", item.item_id)
+          // Get image
+          let image = "/placeholder.svg"
+          const chosen = item.item_images?.find((i: any) => i.is_primary) || item.item_images?.[0]
+          if (chosen) {
+            const raw = chosen.ipfs_hash
+            if (raw && raw.startsWith("http")) image = raw
+            else if (raw) {
+              const { data: urlData } = supabase.storage.from("image").getPublicUrl(raw)
+              image = urlData.publicUrl
+            }
+          }
           watch.push({
             id: item.item_id,
             title: item.title,
-            image: "/placeholder.svg",
+            image,
             currentBid: item.start_price,
             timeLeft: getTimeLeft(item.end_time),
             bids: count ?? 0,
@@ -165,7 +200,7 @@ export default function DashboardPage() {
       // 5. Selling (items created by user)
       const { data: selling } = await supabase
         .from("items")
-        .select("item_id, title, end_time, start_price")
+        .select("item_id, title, end_time, start_price, status, item_images(ipfs_hash, is_primary)")
         .eq("created_by", userId)
       let sellingArr: any[] = []
       for (const item of selling || []) {
@@ -173,15 +208,26 @@ export default function DashboardPage() {
           .from("bids")
           .select("*", { count: "exact", head: true })
           .eq("item_id", item.item_id)
-        // You can add views if you track them
+        // Get image
+        let image = "/placeholder.svg"
+        const chosen = item.item_images?.find((i: any) => i.is_primary) || item.item_images?.[0]
+        if (chosen) {
+          const raw = chosen.ipfs_hash
+          if (raw && raw.startsWith("http")) image = raw
+          else if (raw) {
+            const { data: urlData } = supabase.storage.from("image").getPublicUrl(raw)
+            image = urlData.publicUrl
+          }
+        }
         sellingArr.push({
           id: item.item_id,
           title: item.title,
-          image: "/placeholder.svg",
+          image,
           currentBid: item.start_price,
           timeLeft: getTimeLeft(item.end_time),
           bids: count ?? 0,
           views: 0,
+          status: item.status,
         })
       }
       setSellingItems(sellingArr)
@@ -276,11 +322,12 @@ export default function DashboardPage() {
           </TabsList>
 
           {/* Bidding */}
-          <TabsContent value="bidding" className="mt-6">
-            <h2 className="mb-4 text-xl font-semibold">Your Active Bids</h2>
-            {activeAuctions.length > 0 ? (
+       
+          <TabsContent value="selling" className="mt-6">
+            <h2 className="mb-4 text-xl font-semibold">Items You're Selling</h2>
+            {sellingItems.length > 0 ? (
               <div className="space-y-4">
-                {activeAuctions.map((a) => (
+                {sellingItems.map((a) => (
                   <Card key={a.id}>
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
@@ -290,23 +337,29 @@ export default function DashboardPage() {
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <Link href={`/auctions/${a.id}`} className="font-medium hover:underline">{a.title}</Link>
-                            <Badge className={a.isWinning ? "bg-green-100 text-green-800" : "text-yellow-600 border-yellow-300"} >
-                              {a.isWinning ? "Winning" : "Outbid"}
-                            </Badge>
+                            {a.status === "CLOSED" ? (
+                              <Badge className="bg-gray-300 text-gray-700">Sold</Badge>
+                            ) : (
+                              <Badge className="bg-blue-100 text-blue-800">Active</Badge>
+                            )}
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                             <div className="flex items-center text-muted-foreground">
-                              <DollarSign className="mr-1 h-4 w-4" />${a.currentBid}
+                              <DollarSign className="mr-1 h-4 w-4" />{a.currentBid}
+                            </div>
+                            
+                            <div className="flex items-center text-muted-foreground">
+                              <UserIcon className="mr-1 h-4 w-4" />{a.bids} bids
                             </div>
                             <div className="flex items-center text-muted-foreground">
-                              <Clock className="mr-1 h-4 w-4" />{a.timeLeft}
+                              <Eye className="mr-1 h-4 w-4" />{a.views} views
                             </div>
                           </div>
-                          <div className="mt-3 flex items-center gap-2">
-                            <Link href={`/auctions/${a.id}`} passHref>
-                              <Button size="sm" className="h-8 bg-rose-600 hover:bg-rose-700">Increase Bid</Button>
-                            </Link>
-                            <Link href={`/auctions/${a.id}`} passHref>
+                          <div className="mt-3 flex items-center ">
+                            <Link className="flex gap-4" href={`/auctions/${a.id}`} passHref>
+                              {a.status !== "CLOSED" && (
+                                <Button size="md p-2" className="h-8 bg-rose-600 hover:bg-rose-700">Edit Listing</Button>
+                              )}
                               <Button size="sm" variant="outline" className="h-8">View Details</Button>
                             </Link>
                           </div>
@@ -319,16 +372,19 @@ export default function DashboardPage() {
             ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-8">
-                  <ShoppingCart className="mb-2 h-10 w-10 text-muted-foreground" />
-                  <p className="mb-2 text-lg font-medium">No active bids</p>
-                  <p className="mb-4 text-sm text-muted-foreground">You're not currently bidding on any auctions.</p>
-                  <Link href="/auctions" passHref>
-                    <Button>Browse Auctions</Button>
+                  <Package className="mb-2 h-10 w-10 text-muted-foreground" />
+                  <p className="mb-2 text-lg font-medium">You're not selling any items</p>
+                  <p className="mb-4 text-sm text-muted-foreground">Start selling your items to earn money.</p>
+                  <Link href="/sell" passHref>
+                    <Button className="bg-rose-600 hover:bg-rose-700">
+                      <Plus className="mr-2 h-4 w-4" /> Sell an Item
+                    </Button>
                   </Link>
                 </CardContent>
               </Card>
             )}
           </TabsContent>
+
 
           {/* Won */}
           <TabsContent value="won" className="mt-6">
@@ -445,64 +501,7 @@ export default function DashboardPage() {
             )}
           </TabsContent>
 
-          {/* Selling */}
-          <TabsContent value="selling" className="mt-6">
-            <h2 className="mb-4 text-xl font-semibold">Items You're Selling</h2>
-            {sellingItems.length > 0 ? (
-              <div className="space-y-4">
-                {sellingItems.map((a) => (
-                  <Card key={a.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-4">
-                        <div className="relative h-20 w-20 overflow-hidden rounded-md">
-                          <Image src={a.image} alt={a.title} fill className="object-cover" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <Link href={`/auctions/${a.id}`} className="font-medium hover:underline">{a.title}</Link>
-                            <Badge className="bg-blue-100 text-blue-800">Active</Badge>
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                            <div className="flex items-center text-muted-foreground">
-                              <DollarSign className="mr-1 h-4 w-4" />${a.currentBid}
-                            </div>
-                            <div className="flex items-center text-muted-foreground">
-                              <Clock className="mr-1 h-4 w-4" />{a.timeLeft}
-                            </div>
-                            <div className="flex items-center text-muted-foreground">
-                              <UserIcon className="mr-1 h-4 w-4" />{a.bids} bids
-                            </div>
-                            <div className="flex items-center text-muted-foreground">
-                              <Eye className="mr-1 h-4 w-4" />{a.views} views
-                            </div>
-                          </div>
-                          <div className="mt-3 flex items-center gap-2">
-                            <Button size="sm" className="h-8 bg-rose-600 hover:bg-rose-700">Edit Listing</Button>
-                            <Link href={`/auctions/${a.id}`} passHref>
-                              <Button size="sm" variant="outline" className="h-8">View Details</Button>
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-8">
-                  <Package className="mb-2 h-10 w-10 text-muted-foreground" />
-                  <p className="mb-2 text-lg font-medium">You're not selling any items</p>
-                  <p className="mb-4 text-sm text-muted-foreground">Start selling your items to earn money.</p>
-                  <Link href="/sell" passHref>
-                    <Button className="bg-rose-600 hover:bg-rose-700">
-                      <Plus className="mr-2 h-4 w-4" /> Sell an Item
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+         
         </Tabs>
       </div>
     </div>
@@ -520,5 +519,5 @@ function getTimeLeft(endTime: string) {
   if (days > 0) return `${days}d ${hours}h`
   if (hours > 0) return `${hours}h ${mins}m`
   if (mins > 0) return `${mins}m`
-  return "Ended"
+  return "CLOSED"
 }
