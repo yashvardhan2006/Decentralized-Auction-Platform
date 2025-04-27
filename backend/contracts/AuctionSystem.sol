@@ -3,100 +3,121 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+// ——————————————————————————————————————————————
+// Custom errors are far cheaper than revert‐strings.
+// ——————————————————————————————————————————————
+error NotOwner(uint256 auctionId, address caller);
+error AuctionFinalized(uint256 auctionId);
+error BidTooLow(uint256 auctionId, uint256 sent, uint256 highestBid);
+
 contract AuctionSystem is ReentrancyGuard {
-    // ─── 1) PACKED STRUCT ──────────────────────────────────────────────
-    // slot0: dynamic `itemName` pointer
-    // slot1: uint256 startPrice
-    // slot2: uint256 highestBid
-    // slot3: address payable owner
-    // slot4: address highestBidder (20 bytes) + bool ended (1 byte)  ⬅︎ packed
     struct Auction {
-        string   itemName;
-        uint256  startPrice;
-        uint256  highestBid;
-        address payable owner;
-        address  highestBidder;
-        bool     ended;
+        address payable owner;    // 20 bytes
+        address          winner;  // 20 bytes
+        uint256          start;   // 32 bytes
+        uint256          topBid;  // 32 bytes
+        bool             ended;   // 1 byte
+        string           name;    // dynamic, stored separately
     }
+    uint256 public auctionCount;
+    mapping(uint256 => Auction) private auctions;
 
-    // ─── 2) STATE ─────────────────────────────────────────────────
-    uint256                  public auctionCount;
-    mapping(uint256 => Auction) public auctions;
+    // ——————————————————————————————————————————————
+    // We index both auction ID and participant to let
+    // off-chain listeners filter cheaply.
+    // ——————————————————————————————————————————————
+    event AuctionCreated(
+        uint256 indexed id,
+        address indexed owner,
+        string   name,
+        uint256  start
+    );
+    event BidPlaced(
+        uint256 indexed id,
+        address indexed bidder,
+        uint256        amount
+    );
+    event AuctionEnded(
+        uint256 indexed id,
+        address indexed winner,
+        uint256        amount
+    );
 
-    // ─── 3) EVENTS ────────────────────────────────────────────────
-    event AuctionCreated(uint256 indexed id, string itemName, uint256 startPrice);
-    event BidPlaced     (uint256 indexed id, address indexed bidder, uint256 amount);
-    event AuctionEnded  (uint256 indexed id, address indexed winner, uint256 amount);
-
-    // ─── 4) CREATE ─────────────────────────────────────────────────
-    function createAuction(string calldata _itemName, uint256 _startPrice) external {
-        // unchecked skips the Solidity overflow check here (safe in practice)
-        unchecked { auctionCount++; }
-        auctions[auctionCount] = Auction({
-            itemName:       _itemName,
-            startPrice:     _startPrice,
-            highestBid:     0,
-            owner:          payable(msg.sender),
-            highestBidder:  address(0),
-            ended:          false
+    // ——————————————————————————————————————————————
+    // 1) bump count in one SSTORE
+    // 2) pack statics before dynamic string
+    // ——————————————————————————————————————————————
+    function createAuction(string calldata name, uint256 startPrice) external {
+        uint256 id = ++auctionCount;
+        auctions[id] = Auction({
+            owner:    payable(msg.sender),
+            winner:   address(0),
+            start:    startPrice,
+            topBid:   0,
+            ended:    false,
+            name:     name
         });
-        emit AuctionCreated(auctionCount, _itemName, _startPrice);
+        emit AuctionCreated(id, msg.sender, name, startPrice);
     }
 
-    // ─── 5) BID ────────────────────────────────────────────────────
-    function placeBid(uint256 _id) external payable nonReentrant {
-        Auction storage a = auctions[_id];
+    // ——————————————————————————————————————————————
+    // Uses nonReentrant, custom errors, and .call() refund
+    // instead of transfer() to save stipend logic gas.
+    // ——————————————————————————————————————————————
+    function placeBid(uint256 id) external payable nonReentrant {
+        Auction storage a = auctions[id];
+        if (a.ended)                              revert AuctionFinalized(id);
+        if (msg.value <= a.start || msg.value <= a.topBid)
+                                                 revert BidTooLow(id, msg.value, a.topBid);
 
-        require(!a.ended,               "Auction already finalized");
-        require(msg.value > a.startPrice
-             && msg.value > a.highestBid, "Bid too low");
+        // refund previous bidder
+        address prev = a.winner;
+        uint256 prevAmt = a.topBid;
 
-        // cache old values to refund later
-        uint256 oldBid       = a.highestBid;
-        address payable oldWinner = payable(a.highestBidder);
+        a.topBid   = msg.value;
+        a.winner   = msg.sender;
 
-        // update state just once
-        a.highestBid      = msg.value;
-        a.highestBidder   = msg.sender;
-        emit BidPlaced(_id, msg.sender, msg.value);
-
-        // refund previous bidder (if any)
-        if (oldWinner != address(0)) {
-            (bool ok, ) = oldWinner.call{ value: oldBid }("");
+        if (prev != address(0)) {
+            (bool ok, ) = prev.call{value: prevAmt}("");
             require(ok, "Refund failed");
         }
+
+        emit BidPlaced(id, msg.sender, msg.value);
     }
 
-    // ─── 6) END ────────────────────────────────────────────────────
-    function endAuction(uint256 _id) external nonReentrant {
-        Auction storage a = auctions[_id];
-        require(!a.ended,                "Already ended");
-        require(msg.sender == a.owner,   "Not the auction owner");
+    // ——————————————————————————————————————————————
+    // Custom-owner check + reentrancy + call payout
+    // ——————————————————————————————————————————————
+    function endAuction(uint256 id) external nonReentrant {
+        Auction storage a = auctions[id];
+        if (msg.sender != a.owner)               revert NotOwner(id, msg.sender);
+        if (a.ended)                             revert AuctionFinalized(id);
 
         a.ended = true;
-        emit AuctionEnded(_id, a.highestBidder, a.highestBid);
 
-        // transfer winning bid to owner
-        if (a.highestBid > 0) {
-            (bool ok, ) = a.owner.call{ value: a.highestBid }("");
+        if (a.winner != address(0)) {
+            (bool ok, ) = a.owner.call{value: a.topBid}("");
             require(ok, "Payout failed");
         }
+        emit AuctionEnded(id, a.winner, a.topBid);
     }
 
-    // ─── 7) VIEW ───────────────────────────────────────────────────
-    function getAuction(uint256 _id)
+    // ——————————————————————————————————————————————
+    // Manual getter so we can keep mapping private
+    // ——————————————————————————————————————————————
+    function getAuction(uint256 id)
         external
         view
         returns (
             address owner,
-            string memory itemName,
-            uint256 startPrice,
             address highestBidder,
+            uint256 startPrice,
             uint256 highestBid,
-            bool ended
+            bool    ended,
+            string  memory name
         )
     {
-        Auction storage a = auctions[_id];
-        return (a.owner, a.itemName, a.startPrice, a.highestBidder, a.highestBid, a.ended);
+        Auction storage a = auctions[id];
+        return (a.owner, a.winner, a.start, a.topBid, a.ended, a.name);
     }
 }
