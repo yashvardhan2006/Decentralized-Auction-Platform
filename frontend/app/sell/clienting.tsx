@@ -107,17 +107,29 @@ export default function SellPage() {
       const tx = await contract.createAuction(
         title,
         ethers.parseEther(startPrice.toString())
-      )
-      const receipt = await tx.wait()
-
-      const event = receipt.logs
-        .map(log => {
-          try { return contract.interface.parseLog(log) }
-          catch { return null }
-        })
-        .find(ev => ev?.name === "AuctionCreated")
-      if (!event) throw new Error("Could not get auction ID from contract event")
-      const auctionId = event.args.id.toString()
+      );
+      
+      // Wait for the transaction to be mined
+      const receipt = await tx.wait();
+      
+      // Parse the event properly
+      let auctionId: string | null = null;
+      for (const log of receipt.logs) {
+        try {
+          const parsedLog = contract.interface.parseLog(log);
+          if (parsedLog.name === "AuctionCreated") {
+            auctionId = parsedLog.args.id.toString();
+            break;
+          }
+        } catch (e) {
+          // Ignore logs that do not match
+        }
+      }
+      
+      if (!auctionId) {
+        throw new Error("Could not get auction ID from contract event");
+      }
+      
 
       // 3️⃣ Supabase: insert item record
       const description = fdMain.get("description")?.toString() || ""
