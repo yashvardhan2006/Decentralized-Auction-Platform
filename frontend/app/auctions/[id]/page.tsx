@@ -166,7 +166,7 @@ export default function AuctionDetailPage({
   async function getAuctionOnChain(auctionId: number) {
     const provider = new ethers.BrowserProvider((window as any).ethereum);
     const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, provider);
-    const auction = await contract.auctions(auctionId);
+    const auction = await contract.getAuction(auctionId);
     return {
       highestBid: Number(ethers.formatEther(auction.highestBid)),
       highestBidder: auction.highestBidder,
@@ -178,36 +178,51 @@ export default function AuctionDetailPage({
     setIsEnding(true);
     try {
       if (!installed) throw new Error("Please install MetaMask");
+  
       if (!account) {
         await connectAndSave?.();
         if (!account) throw new Error("Wallet not connected");
       }
+  
       if (!item) throw new Error("No item loaded");
       if (!item.auction_id) throw new Error("No auction_id found for this item");
-
-      // Use auction_id for on-chain lookup
+  
+      // 1. Connect to the blockchain
       const provider = new ethers.BrowserProvider((window as any).ethereum);
       const contract = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, provider);
-      const auction = await contract.auctions(item.auction_id);
+  
+      // 2. Verify ownership
+      const auction = await contract.getAuction(item.auction_id);
       if (auction.owner.toLowerCase() !== account.toLowerCase()) {
         throw new Error("You are not the auction owner (on-chain check failed)");
       }
-
-      // 1. End auction on-chain
+  
+      // 3. End the auction on-chain
       const signer = await provider.getSigner();
       const contractWithSigner = new ethers.Contract(AUCTION_ADDRESS, AUCTION_ABI, signer);
-
+  
       const tx = await contractWithSigner.endAuction(item.auction_id);
       await tx.wait();
-
-      // 2. Update auction status in DB
-      await supabase
+  
+      // 4. Update auction status in DB
+      const { error } = await supabase
         .from("items")
         .update({ status: "CLOSED" })
         .eq("item_id", Number(params.id));
-
+  
+      if (error) {
+        console.error("Failed to update item in database:", error);
+      }
+  
+      // 5. Locally update state (VERY IMPORTANT)
+      setItem(prev => ({
+        ...prev,
+        status: "CLOSED",
+      }));
+  
       setAuctionEnded(true);
-      alert("Auction closed and funds transferred to you!");
+      // Optionally use a toast notification
+      // toast.success("Auction closed successfully and funds transferred!");
     } catch (err: any) {
       setEndError(err?.message || "Failed to close auction");
       console.error("End auction failed:", err);
@@ -215,7 +230,6 @@ export default function AuctionDetailPage({
       setIsEnding(false);
     }
   }
-  
 
   async function handleBid() {
     setBidError(null);
@@ -474,7 +488,7 @@ export default function AuctionDetailPage({
                   <div>
                     <p className="font-medium">Seller #{item.created_by}</p>
                     <p className="text-sm text-gray-500">
-                      Member since Jan 2024
+                      Member since April 2024
                     </p>
                   </div>
                 </div>
@@ -487,18 +501,23 @@ export default function AuctionDetailPage({
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardContent className="space-y-4">
-            {isOwner && item.status !== "ended" && (
-            <div className="space-y-2">
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700"
-                onClick={handleEndAuction}
-                disabled={isEnding}
-              >
-                {isEnding ? "Closing Auction..." : "Close Auction & Claim Funds"}
-              </Button>
-              {endError && <p className="text-sm text-rose-600">{endError}</p>}
-            </div>
-          )}
+            {isOwner && (
+  <div className="space-y-2">
+    <Button
+      className="w-full bg-green-600 hover:bg-green-700"
+      onClick={handleEndAuction}
+      disabled={item.status === "CLOSED" || isEnding}
+    >
+      {item.status === "CLOSED"
+        ? `Auction Ended at $${maxBid}`
+        : isEnding
+          ? "Closing Auction..."
+          : "Close Auction & Claim Funds"}
+    </Button>
+    {endError && <p className="text-sm text-rose-600">{endError}</p>}
+  </div>
+)}
+
 
               <h1 className="text-2xl font-bold">{item.title}</h1>
 

@@ -64,7 +64,8 @@ export default function AuctionsPage() {
         .from<AuctionRow>("items")
         .select(
           `item_id, title, category, start_price, start_time, end_time, item_images(ipfs_hash, is_primary)`
-        );
+        )
+        .eq("status", "OPEN");
       if (itemsError || !items) {
         console.error("Error loading items:", itemsError);
         setLoading(false);

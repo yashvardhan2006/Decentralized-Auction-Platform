@@ -125,6 +125,7 @@ export default function FeaturedAuctions() {
       const { data: items } = await supabase
         .from<AuctionRow>("items")
         .select(`item_id, title, category, start_price, end_time, item_images(ipfs_hash, is_primary)`)
+        .eq("status", "OPEN")
       if (!items) return
 
       const ids = items.map((i) => i.item_id)
