@@ -76,6 +76,17 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* --font-sans: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont; */
+  --font-display: var(--font-display), system-ui, sans-serif;
+}
+
+html, body {
+  font-family: var(--font-display);
+  line-height: 1.4;
+  letter-spacing: 0.1em;
+}
+h1, h2, h3, h4 {
+  font-weight: 700;
 }
 
 @layer base {

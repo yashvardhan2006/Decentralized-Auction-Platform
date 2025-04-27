@@ -1,5 +1,6 @@
 import type React from "react"
-import { Inter } from "next/font/google"
+import { Inter, Poppins, } from "next/font/google"
+import { Orbitron } from 'next/font/google'
 import Link from "next/link"
 import { AuthProvider } from "./context/AuthProvider"
 import { Bell, Heart, Menu, Search, User } from "lucide-react"
@@ -13,7 +14,23 @@ import Navbar from "./components/Navbar"
 import "./globals.css"
 import { Suspense } from "react"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '700', '800'], // whatever weights you need
+  variable: '--font-inter',
+})
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'], // choose the weights you need
+  variable: '--font-sans',
+  display: 'swap',
+})
+const orbitron = Orbitron({
+  subsets: ['latin'],
+  weight: ['400','500','700','900'],   // pick the weights you need
+  variable: '--font-display',
+  display: 'swap',
+})
 
 export const metadata = {
   title: "Auction Platform",
@@ -26,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={orbitron.variable} suppressHydrationWarning>
       <body className={inter.className}>
       <AuthProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
