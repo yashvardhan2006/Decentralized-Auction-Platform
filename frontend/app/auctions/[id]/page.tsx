@@ -555,12 +555,22 @@ export default function AuctionDetailPage({
                       : "Place Bid"}
                 </Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1">
-                    <Share2 className="mr-2" /> Share
-                  </Button>
+                  
                 </div>
               </div>
-
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={toggleWatch}
+                >
+                  {isWatching ? (
+                    <> <Heart className="mr-2 text-rose-600" /> Remove Watch</>
+                  ) : (
+                    <> <Heart className="mr-2" /> Add to Watchlist</>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
