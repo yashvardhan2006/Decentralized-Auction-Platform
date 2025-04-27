@@ -203,8 +203,8 @@ export default function AuctionDetailPage({
       // 2. Update auction status in DB
       await supabase
         .from("items")
-        .update({ status: "ended" })
-        .eq("item_id", item.item_id);
+        .update({ status: "CLOSED" })
+        .eq("item_id", Number(params.id));
 
       setAuctionEnded(true);
       alert("Auction closed and funds transferred to you!");
