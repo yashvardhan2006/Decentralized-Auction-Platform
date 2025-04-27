@@ -17,6 +17,8 @@ import {
   Trophy,
   Eye,
   User as UserIcon,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -31,7 +33,7 @@ export default function DashboardPage() {
   const supabase = createClientComponentClient()
 
   // State for DB-driven data
-  const [activeAuctions, setActiveAuctions] = useState<any[]>([])
+  const [bidsTab, setBidsTab] = useState<any[]>([])
   const [wonAuctions, setWonAuctions] = useState<any[]>([])
   const [watchlist, setWatchlist] = useState<any[]>([])
   const [sellingItems, setSellingItems] = useState<any[]>([])
@@ -61,36 +63,85 @@ export default function DashboardPage() {
       }
       const userId = profile.user_id
 
-      // 2. Active bids (auctions where user is highest bidder or has bid)
+      // 2. All bids by user (for Bids tab)
       const { data: myBids } = await supabase
         .from("bids")
-        .select("item_id, amount")
+        .select("item_id, amount, bid_time")
         .eq("bidder_id", userId)
         .order("bid_time", { ascending: false })
+
+      // Get all unique item_ids from bids
       const uniqueBidItemIds = [...new Set((myBids || []).map((b: any) => b.item_id))]
-      let active: any[] = []
+
+      // Fetch all relevant items (OPEN and CLOSED)
+      let itemsMap: Record<number, any> = {}
       if (uniqueBidItemIds.length) {
         const { data: items } = await supabase
           .from("items")
-          .select("item_id, title, category, start_price, end_time, item_images(ipfs_hash, is_primary)")
+          .select("item_id, title, category, start_price, end_time, status, item_images(ipfs_hash, is_primary)")
           .in("item_id", uniqueBidItemIds)
         for (const item of items || []) {
-          // Get highest bid for each item
-          const { data: topBid } = await supabase
-            .from("bids")
-            .select("bidder_id, amount")
-            .eq("item_id", item.item_id)
-            .order("amount", { ascending: false })
-            .limit(1)
-            .single()
-          const isWinning = topBid?.bidder_id === userId
-          // Get bid count
-          const { count } = await supabase
-            .from("bids")
-            .select("*", { count: "exact", head: true })
-            .eq("item_id", item.item_id)
+          itemsMap[item.item_id] = item
+        }
+      }
 
-          // Get image (same logic as auctions page)
+      // For each item, get all bids (to determine highest bid)
+      let itemBidsMap: Record<number, any[]> = {}
+      if (uniqueBidItemIds.length) {
+        const { data: allBids } = await supabase
+          .from("bids")
+          .select("item_id, bidder_id, amount")
+          .in("item_id", uniqueBidItemIds)
+        for (const b of allBids || []) {
+          if (!itemBidsMap[b.item_id]) itemBidsMap[b.item_id] = []
+          itemBidsMap[b.item_id].push(b)
+        }
+        // Sort each by amount descending
+        Object.values(itemBidsMap).forEach(arr => arr.sort((a, b) => b.amount - a.amount))
+      }
+
+      // 2a. Bids tab: show all user's bids for OPEN items, with winning/outbidded status
+      let bidsTabArr: any[] = []
+      for (const bid of myBids || []) {
+        const item = itemsMap[bid.item_id]
+        if (!item || item.status !== "OPEN") continue
+        const bidsForItem = itemBidsMap[bid.item_id] || []
+        const highestBid = bidsForItem[0]
+        const isWinning = highestBid && highestBid.bidder_id === userId && highestBid.amount === bid.amount
+        // Get image
+        let image = "/placeholder.svg"
+        const chosen = item.item_images?.find((i: any) => i.is_primary) || item.item_images?.[0]
+        if (chosen) {
+          const raw = chosen.ipfs_hash
+          if (raw && raw.startsWith("http")) image = raw
+          else if (raw) {
+            const { data: urlData } = supabase.storage.from("image").getPublicUrl(raw)
+            image = urlData.publicUrl
+          }
+        }
+        bidsTabArr.push({
+          id: item.item_id,
+          title: item.title,
+          image,
+          category: item.category,
+          currentBid: highestBid?.amount ?? item.start_price,
+          yourBid: bid.amount,
+          timeLeft: getTimeLeft(item.end_time),
+          isWinning,
+          bid_time: bid.bid_time,
+        })
+      }
+      setBidsTab(bidsTabArr)
+
+      // 3. Won auctions (status CLOSED and user has highest bid)
+      let won: any[] = []
+      for (const itemId of uniqueBidItemIds) {
+        const item = itemsMap[itemId]
+        if (!item || item.status !== "CLOSED") continue
+        const bidsForItem = itemBidsMap[itemId] || []
+        const highestBid = bidsForItem[0]
+        if (highestBid && highestBid.bidder_id === userId) {
+          // Get image
           let image = "/placeholder.svg"
           const chosen = item.item_images?.find((i: any) => i.is_primary) || item.item_images?.[0]
           if (chosen) {
@@ -101,58 +152,14 @@ export default function DashboardPage() {
               image = urlData.publicUrl
             }
           }
-
-          active.push({
+          won.push({
             id: item.item_id,
             title: item.title,
             image,
-            currentBid: topBid?.amount ?? item.start_price,
-            timeLeft: getTimeLeft(item.end_time),
-            bids: count ?? 0,
-            isWinning,
+            finalPrice: highestBid.amount,
+            date: new Date(item.end_time).toLocaleDateString(),
+            status: "Pending", // You can enhance this with payment/shipping info
           })
-        }
-      }
-      setActiveAuctions(active)
-
-      // 3. Won auctions (user is highest bidder and auction CLOSED)
-      const now = new Date()
-      let won: any[] = []
-      if (uniqueBidItemIds.length) {
-        const { data: CLOSEDItems } = await supabase
-          .from("items")
-          .select("item_id, title, end_time, item_images(ipfs_hash, is_primary)")
-          .lt("end_time", now.toISOString())
-          .in("item_id", uniqueBidItemIds)
-        for (const item of CLOSEDItems || []) {
-          const { data: topBid } = await supabase
-            .from("bids")
-            .select("bidder_id, amount")
-            .eq("item_id", item.item_id)
-            .order("amount", { ascending: false })
-            .limit(1)
-            .single()
-          if (topBid?.bidder_id === userId) {
-            // Get image
-            let image = "/placeholder.svg"
-            const chosen = item.item_images?.find((i: any) => i.is_primary) || item.item_images?.[0]
-            if (chosen) {
-              const raw = chosen.ipfs_hash
-              if (raw && raw.startsWith("http")) image = raw
-              else if (raw) {
-                const { data: urlData } = supabase.storage.from("image").getPublicUrl(raw)
-                image = urlData.publicUrl
-              }
-            }
-            won.push({
-              id: item.item_id,
-              title: item.title,
-              image,
-              finalPrice: topBid.amount,
-              date: new Date(item.end_time).toLocaleDateString(),
-              status: "Pending", // You can enhance this with payment/shipping info
-            })
-          }
         }
       }
       setWonAuctions(won)
@@ -292,7 +299,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Total Bids</CardTitle></CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeAuctions.length}</div>
+              <div className="text-2xl font-bold">{bidsTab.length}</div>
               <p className="text-xs text-muted-foreground">Active bids</p>
             </CardContent>
           </Card>
@@ -322,13 +329,12 @@ export default function DashboardPage() {
           </TabsList>
 
           {/* Bidding */}
-       
-          <TabsContent value="selling" className="mt-6">
-            <h2 className="mb-4 text-xl font-semibold">Items You're Selling</h2>
-            {sellingItems.length > 0 ? (
+          <TabsContent value="bidding" className="mt-6">
+            <h2 className="mb-4 text-xl font-semibold">Your Bids (Open Auctions)</h2>
+            {bidsTab.length > 0 ? (
               <div className="space-y-4">
-                {sellingItems.map((a) => (
-                  <Card key={a.id}>
+                {bidsTab.map((a) => (
+                  <Card key={a.id + "-" + a.bid_time}>
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <div className="relative h-20 w-20 overflow-hidden rounded-md">
@@ -337,29 +343,30 @@ export default function DashboardPage() {
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <Link href={`/auctions/${a.id}`} className="font-medium hover:underline">{a.title}</Link>
-                            {a.status === "CLOSED" ? (
-                              <Badge className="bg-gray-300 text-gray-700">Sold</Badge>
-                            ) : (
-                              <Badge className="bg-blue-100 text-blue-800">Active</Badge>
-                            )}
+                            <Badge className={a.isWinning ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                              {a.isWinning ? (
+                                <span className="flex items-center"><CheckCircle2 className="mr-1 h-4 w-4" /> Winning</span>
+                              ) : (
+                                <span className="flex items-center"><XCircle className="mr-1 h-4 w-4" /> Outbid</span>
+                              )}
+                            </Badge>
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                             <div className="flex items-center text-muted-foreground">
-                              <DollarSign className="mr-1 h-4 w-4" />{a.currentBid}
-                            </div>
-                            
-                            <div className="flex items-center text-muted-foreground">
-                              <UserIcon className="mr-1 h-4 w-4" />{a.bids} bids
+                              <DollarSign className="mr-1 h-4 w-4" />Current: ${a.currentBid}
                             </div>
                             <div className="flex items-center text-muted-foreground">
-                              <Eye className="mr-1 h-4 w-4" />{a.views} views
+                              <UserIcon className="mr-1 h-4 w-4" />Your Bid: ${a.yourBid}
+                            </div>
+                            <div className="flex items-center text-muted-foreground">
+                              <Clock className="mr-1 h-4 w-4" />{a.timeLeft}
                             </div>
                           </div>
-                          <div className="mt-3 flex items-center ">
-                            <Link className="flex gap-4" href={`/auctions/${a.id}`} passHref>
-                              {a.status !== "CLOSED" && (
-                                <Button size="md p-2" className="h-8 bg-rose-600 hover:bg-rose-700">Edit Listing</Button>
-                              )}
+                          <div className="mt-3 flex items-center gap-2">
+                            <Link href={`/auctions/${a.id}`} passHref>
+                              <Button size="sm" className="h-8 bg-rose-600 hover:bg-rose-700">Bid Again</Button>
+                            </Link>
+                            <Link href={`/auctions/${a.id}`} passHref>
                               <Button size="sm" variant="outline" className="h-8">View Details</Button>
                             </Link>
                           </div>
@@ -372,19 +379,16 @@ export default function DashboardPage() {
             ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-8">
-                  <Package className="mb-2 h-10 w-10 text-muted-foreground" />
-                  <p className="mb-2 text-lg font-medium">You're not selling any items</p>
-                  <p className="mb-4 text-sm text-muted-foreground">Start selling your items to earn money.</p>
-                  <Link href="/sell" passHref>
-                    <Button className="bg-rose-600 hover:bg-rose-700">
-                      <Plus className="mr-2 h-4 w-4" /> Sell an Item
-                    </Button>
+                  <ShoppingCart className="mb-2 h-10 w-10 text-muted-foreground" />
+                  <p className="mb-2 text-lg font-medium">No active bids</p>
+                  <p className="mb-4 text-sm text-muted-foreground">Start bidding on auctions to see them here.</p>
+                  <Link href="/auctions" passHref>
+                    <Button>Browse Auctions</Button>
                   </Link>
                 </CardContent>
               </Card>
             )}
           </TabsContent>
-
 
           {/* Won */}
           <TabsContent value="won" className="mt-6">
@@ -501,7 +505,67 @@ export default function DashboardPage() {
             )}
           </TabsContent>
 
-         
+          {/* Selling */}
+          <TabsContent value="selling" className="mt-6">
+            <h2 className="mb-4 text-xl font-semibold">Items You're Selling</h2>
+            {sellingItems.length > 0 ? (
+              <div className="space-y-4">
+                {sellingItems.map((a) => (
+                  <Card key={a.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative h-20 w-20 overflow-hidden rounded-md">
+                          <Image src={a.image} alt={a.title} fill className="object-cover" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <Link href={`/auctions/${a.id}`} className="font-medium hover:underline">{a.title}</Link>
+                            {a.status === "CLOSED" ? (
+                              <Badge className="bg-gray-300 text-gray-700">Sold</Badge>
+                            ) : (
+                              <Badge className="bg-blue-100 text-blue-800">Active</Badge>
+                            )}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                            <div className="flex items-center text-muted-foreground">
+                              <DollarSign className="mr-1 h-4 w-4" />{a.currentBid}
+                            </div>
+                            <div className="flex items-center text-muted-foreground">
+                              <UserIcon className="mr-1 h-4 w-4" />{a.bids} bids
+                            </div>
+                            <div className="flex items-center text-muted-foreground">
+                              <Eye className="mr-1 h-4 w-4" />{a.views} views
+                            </div>
+                          </div>
+                          <div className="mt-3 flex items-center ">
+                            <Link className="flex gap-4" href={`/auctions/${a.id}`} passHref>
+                              {a.status !== "CLOSED" && (
+                                <Button size="md p-2" className="h-8 bg-rose-600 hover:bg-rose-700">Edit Listing</Button>
+                              )}
+                              <Button size="sm" variant="outline" className="h-8">View Details</Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-8">
+                  <Package className="mb-2 h-10 w-10 text-muted-foreground" />
+                  <p className="mb-2 text-lg font-medium">You're not selling any items</p>
+                  <p className="mb-4 text-sm text-muted-foreground">Start selling your items to earn money.</p>
+                  <Link href="/sell" passHref>
+                    <Button className="bg-rose-600 hover:bg-rose-700">
+                      <Plus className="mr-2 h-4 w-4" /> Sell an Item
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
     </div>
