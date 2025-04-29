@@ -77,7 +77,7 @@ git clone https://github.com/yashvardhan2006/Decentralized-Auction-Platform.git
 cd Decentralized-Auction-Platform
 ```
 
-### 2. [Backend Setup](backend/README.md)
+### 2. Backend Setup [Detailed](backend/README.md)
 
 ```bash
 cd backend
