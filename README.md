@@ -33,9 +33,6 @@ A blockchain-powered auction platform allowing users to create and participate i
    - [Backend Commands](#backend-commands)
    - [Frontend Usage](#frontend-usage)
 7. [Testing](#testing)
-8. [Contributing](#contributing)
-9. [License](#license)
-10. [Contact](#contact)
 
 ## Features
 
@@ -169,21 +166,4 @@ console.log(auction);
 - **Backend**: Run `npm test` in the `backend` directory.
 - **Frontend**: Manual UI testing via Next.js dev server.
 
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository.
-2. Create a new branch: `git checkout -b feature-name`.
-3. Commit your changes: `git commit -m "Add feature"`.
-4. Push to the branch: `git push origin feature-name`.
-5. Open a pull request.
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Contact
-
-For questions or feedback, open an issue or reach out via GitHub at [yashvardhan2006](https://github.com/yashvardhan2006). Happy bidding! 🎉
 
