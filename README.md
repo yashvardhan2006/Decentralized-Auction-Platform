@@ -112,8 +112,6 @@ Create a `.env.local` file in the `frontend` directory with the following:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-# (Optional) If not using MetaMask default provider
-# NEXT_PUBLIC_ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/yourInfuraKey
 ```
 
 Start the development server:
