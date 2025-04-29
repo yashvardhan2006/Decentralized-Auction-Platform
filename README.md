@@ -13,7 +13,7 @@
 
 ## Resources
 
-- [**Canva Presentation**](https://www.canva.com/design/DAGlrufT-pw/B-WQFOZtnp6_n-tkm4tHbg/edit?utm_content=DAGlrufT-pw\&utm_campaign=designshare\&utm_medium=link2\&utm_source=sharebutton)
+- [**Presentation**](https://www.canva.com/design/DAGlrufT-pw/B-WQFOZtnp6_n-tkm4tHbg/edit?utm_content=DAGlrufT-pw\&utm_campaign=designshare\&utm_medium=link2\&utm_source=sharebutton)
 - [**Demo Video**](https://drive.google.com/file/d/1NsnRB2DzAz5LpnkH0zC1bKiLG-1feSoc/view?usp=sharing)
 
 ---
