@@ -32,7 +32,6 @@ A blockchain-powered auction platform allowing users to create and participate i
 6. [Usage](#usage)
    - [Backend Commands](#backend-commands)
    - [Frontend Usage](#frontend-usage)
-7. [Testing](#testing)
 
 ## Features
 
@@ -168,9 +167,5 @@ console.log(auction);
 - Place bids directly from auction listings.
 - View your profile and dashboard for your auctions and bids.
 
-## Testing
-
-- **Backend**: Run `npm test` in the `backend` directory.
-- **Frontend**: Manual UI testing via Next.js dev server.
 
 
