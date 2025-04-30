@@ -95,8 +95,12 @@ ganache
 Compile and migrate contracts:
 
 ```bash
-truffle migrate --reset
+truffle migrate
 ```
+
+
+
+#### From the Deployed contract copy the contract address of 2_deploy_auction.js and paste it in AUCTION_ADDRESS in auction.ts(In our case- frontend/app/lib/auction.ts) file.
 
 ### 3. Frontend Setup
 
@@ -124,7 +128,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Usage
 
-### Backend Commands
+### Backend Commands(For testing smart contract)
 
 ```bash
 cd backend
